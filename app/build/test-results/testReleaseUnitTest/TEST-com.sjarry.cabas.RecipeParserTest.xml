@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.sjarry.cabas.RecipeParserTest" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-08-20T16:58:24" hostname="laptop1711891" time="0.041">
+  <properties/>
+  <testcase name="les cuilleres sont normalisees en cac et cas quelle que soit l ecriture" classname="com.sjarry.cabas.RecipeParserTest" time="0.02"/>
+  <testcase name="accepte les nombres fractionnaires mixtes" classname="com.sjarry.cabas.RecipeParserTest" time="0.001"/>
+  <testcase name="convertit kilogrammes et litres" classname="com.sjarry.cabas.RecipeParserTest" time="0.003"/>
+  <testcase name="ignore la mention optionnel" classname="com.sjarry.cabas.RecipeParserTest" time="0.0"/>
+  <testcase name="lit le titre les ingredients et les etapes" classname="com.sjarry.cabas.RecipeParserTest" time="0.003"/>
+  <testcase name="un ingredient sans unite est compte en pieces" classname="com.sjarry.cabas.RecipeParserTest" time="0.002"/>
+  <testcase name="accepte les fractions" classname="com.sjarry.cabas.RecipeParserTest" time="0.002"/>
+  <testcase name="normalise les masses en grammes" classname="com.sjarry.cabas.RecipeParserTest" time="0.001"/>
+  <testcase name="signale l absence de section ingredients sans planter" classname="com.sjarry.cabas.RecipeParserTest" time="0.001"/>
+  <testcase name="ne confond pas un nom commencant par une lettre d unite" classname="com.sjarry.cabas.RecipeParserTest" time="0.0"/>
+  <testcase name="retire le balisage markdown du nom" classname="com.sjarry.cabas.RecipeParserTest" time="0.001"/>
+  <testcase name="conserve les unites libres avec leur libelle" classname="com.sjarry.cabas.RecipeParserTest" time="0.002"/>
+  <testcase name="accepte les sections sans accents et les puces variees" classname="com.sjarry.cabas.RecipeParserTest" time="0.001"/>
+  <testcase name="utilise le nom de fichier quand le titre manque" classname="com.sjarry.cabas.RecipeParserTest" time="0.0"/>
+  <testcase name="un ingredient sans quantite est marque comme non chiffre" classname="com.sjarry.cabas.RecipeParserTest" time="0.002"/>
+  <testcase name="normalise les volumes en millilitres" classname="com.sjarry.cabas.RecipeParserTest" time="0.001"/>
+  <testcase name="un nom commencant par cac ou cas n est pas pris pour une cuillere" classname="com.sjarry.cabas.RecipeParserTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

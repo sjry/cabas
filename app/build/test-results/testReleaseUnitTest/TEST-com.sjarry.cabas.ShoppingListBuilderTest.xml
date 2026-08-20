@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.sjarry.cabas.ShoppingListBuilderTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-08-20T16:58:24" hostname="laptop1711891" time="0.034">
+  <properties/>
+  <testcase name="un menu vide donne une liste vide" classname="com.sjarry.cabas.ShoppingListBuilderTest" time="0.026"/>
+  <testcase name="la vue par recette conserve les quantites multipliees" classname="com.sjarry.cabas.ShoppingListBuilderTest" time="0.001"/>
+  <testcase name="ne melange pas masse et volume d un meme ingredient" classname="com.sjarry.cabas.ShoppingListBuilderTest" time="0.0"/>
+  <testcase name="reporte l etat coche sur les articles" classname="com.sjarry.cabas.ShoppingListBuilderTest" time="0.001"/>
+  <testcase name="un ingredient sans quantite reste une ligne unique" classname="com.sjarry.cabas.ShoppingListBuilderTest" time="0.001"/>
+  <testcase name="un ingredient non chiffre disparait si une recette le chiffre" classname="com.sjarry.cabas.ShoppingListBuilderTest" time="0.0"/>
+  <testcase name="les deux vues partagent la meme cle de case a cocher" classname="com.sjarry.cabas.ShoppingListBuilderTest" time="0.001"/>
+  <testcase name="fusionne un ingredient present dans deux recettes" classname="com.sjarry.cabas.ShoppingListBuilderTest" time="0.0"/>
+  <testcase name="trie la vue totale par ordre alphabetique" classname="com.sjarry.cabas.ShoppingListBuilderTest" time="0.0"/>
+  <testcase name="multiplie les quantites par le nombre de convives" classname="com.sjarry.cabas.ShoppingListBuilderTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
