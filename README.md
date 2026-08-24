@@ -175,3 +175,6 @@ ui/         Compose Material 3 : recettes, détail, menu, liste de courses
 Les quantités sont stockées en unité canonique (grammes / millilitres) pour 1 personne ;
 la multiplication par le nombre de convives et l'agrégation se font à l'affichage, dans
 [`ShoppingListBuilder`](app/src/main/java/com/sjarry/cabas/data/ShoppingListBuilder.kt).
+
+Les conventions de code, les règles de domaine à ne pas casser et la façon de vérifier une
+modification sur l'émulateur sont réunies dans [`AGENTS.md`](AGENTS.md).

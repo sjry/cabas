@@ -4,6 +4,21 @@ Complément au [README](README.md), qui reste la référence sur le **format des
 l'usage de l'application. Ce fichier-ci décrit comment travailler dans le dépôt : commandes,
 conventions, pièges de la machine, et façon de vérifier une modification d'interface.
 
+## Tenir README.md et AGENTS.md à jour
+
+**C'est une partie du travail, pas une étape optionnelle.** Avant de conclure une tâche,
+relire ces deux fichiers et corriger ce que la modification vient de rendre faux ou
+incomplet. Une documentation qui décrit un état révolu coûte plus cher que pas de
+documentation du tout : l'agent suivant lui fait confiance.
+
+- **[README.md](README.md)** — ce que voit l'utilisateur : format des recettes, comportement
+  des écrans, commandes de compilation, prérequis machine.
+- **AGENTS.md** (ce fichier) — ce que doit savoir un agent : conventions, règles de domaine,
+  procédures de vérification, pièges rencontrés. Un piège qui a coûté du temps se note ici,
+  avec sa cause, pour ne pas être payé deux fois.
+
+Ces mises à jour font partie du même commit que la modification qui les motive.
+
 ## L'application en une phrase
 
 Cabas est une application Android (Kotlin, Compose, Room) qui parse des recettes markdown
@@ -144,12 +159,15 @@ Pour convertir une coordonnée lue sur la capture réduite vers l'appareil : mul
 
 ## Git
 
-Branche `main`, historique très court. Ne pas committer ni pousser sans demande explicite.
-Vérifier que `app/schemas/` suit bien quand le schéma bouge.
+Branche `main`, remote `origin` (`github.com:sjry/cabas`), historique très court. Ne pas
+committer ni pousser sans demande explicite. Vérifier que `app/schemas/` suit bien quand le
+schéma bouge.
 
-⚠️ `app/build/` **est suivi par git** (~2 560 fichiers) : le `.gitignore` ne contient que
-`/build`, qui ne vise que la racine. Conséquence : toute compilation salit `git status` avec
-des `.dex`, des `.jar` et des classes générées. Un `git add -A` embarquerait tout. En
-attendant un `git rm -r --cached app/build` accompagné d'une ligne `app/build/` dans le
-`.gitignore`, restreindre les commandes git aux chemins voulus (`git status --short -- app/src`,
-`git add app/src ...`).
+`app/build/` est ignoré (ligne ajoutée au `.gitignore` en août 2026, avec réécriture de
+l'historique pour en purger les 2 560 fichiers qui y avaient été committés). `git status`
+doit donc rester propre après une compilation : s'il ne l'est pas, c'est qu'un chemin
+généré échappe encore au `.gitignore` — le corriger plutôt que de committer le bruit.
+
+Les anciens commits d'avant la réécriture restent visibles sur GitHub via la référence de
+la pull request #1 ; sans importance ici (des `.dex`, aucun secret), mais à savoir avant de
+conclure que le dépôt distant est purgé.
