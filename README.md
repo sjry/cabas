@@ -158,9 +158,8 @@ adb install app/build/outputs/apk/release/app-release.apk
 La release passe par R8 (`isMinifyEnabled` + `isShrinkResources`), ce qui ramène l'APK
 de 17 Mo à environ 1,5 Mo.
 
-L'ancienne clé `~/keystores/appli-cuisine.jks` n'est plus utilisée : aucune version signée
-avec elle n'a été distribuée, et son mot de passe n'était pas conservé dans le dépôt. La clé
-de référence est désormais `cabas-release.jks` (RSA 4096, valide 30 ans).
+La clé est une RSA 4096 valide 30 ans, sans rapport avec le nom de l'application : une clé
+de signature est un secret, la renommer n'apporterait rien.
 
 > **À sauvegarder** : `cabas-release.jks` et `keystore.properties`. Cette clé
 > est la seule qui permette de publier une mise à jour installable par-dessus l'app
