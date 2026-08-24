@@ -230,6 +230,24 @@ Pour convertir une coordonnée lue sur la capture réduite vers l'appareil : mul
 - Un APK debug et un APK release ne cohabitent pas sur un même appareil : signatures
   différentes, il faut désinstaller l'un avant d'installer l'autre.
 
+## Distribution (CI GitHub Actions)
+
+`.github/workflows/release.yml` construit et publie l'APK signé dans une release GitHub à
+chaque tag `v*` ; l'utilisateur l'installe en ouvrant
+`https://github.com/sjry/cabas/releases/latest` sur son téléphone. Détail de la procédure
+et des secrets dans le README.
+
+- `versionCode`/`versionName` sont surchargeables par propriétés Gradle
+  (`-PversionCode= -PversionName=`) et valent 1 / « 1.0 » par défaut. La CI passe le numéro
+  de build en `versionCode` : croissant, donc mise à jour installable par-dessus.
+- La CI reconstitue `keystore.properties` depuis les secrets, exactement comme en local.
+  Elle **échoue volontairement** si `KEYSTORE_BASE64` manque : un APK release non signé ne
+  s'installe pas, mieux vaut un message clair qu'un artefact inutilisable.
+- `$ANDROID_HOME/build-tools/*/apksigner` ne se glob pas : deux versions de build-tools
+  cohabitent (34 et 36 ici, plusieurs aussi sur les runners GitHub) et le second chemin
+  serait passé en argument (`Unsupported command`). Sélectionner explicitement le plus
+  récent (`find … | sort -V | tail -1`).
+
 ## Git
 
 Branche `main`, remote `origin` (`github.com:sjry/cabas`), historique très court. Ne pas

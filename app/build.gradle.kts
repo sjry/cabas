@@ -24,8 +24,10 @@ android {
         applicationId = "com.sjarry.cabas"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // Surchargées par la CI depuis le tag : `-PversionName=1.2 -PversionCode=7`.
+        // Sans ces propriétés (build locale), la version par défaut suffit.
+        versionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionName = (findProperty("versionName") as String?) ?: "1.0"
     }
 
     signingConfigs {

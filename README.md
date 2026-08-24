@@ -146,8 +146,9 @@ JAVA_HOME=~/.jdks/jbr-21.0.11 ./gradlew assembleDebug
 ### Build release signée
 
 La configuration de signature est lue dans `keystore.properties` à la racine — **non
-versionné**, comme la clé elle-même (`~/keystores/appli-cuisine.jks`). Si ce fichier est
-absent, le projet compile quand même : la release sort simplement non signée.
+versionné**, comme la clé elle-même (`cabas-release.jks`, également à la racine et ignorée
+par `.gitignore`). Si ce fichier est absent, le projet compile quand même : la release sort
+simplement non signée, donc non installable.
 
 ```bash
 ./gradlew assembleRelease   # -> app/build/outputs/apk/release/app-release.apk
@@ -157,16 +158,56 @@ adb install app/build/outputs/apk/release/app-release.apk
 La release passe par R8 (`isMinifyEnabled` + `isShrinkResources`), ce qui ramène l'APK
 de 17 Mo à environ 1,5 Mo.
 
-La clé garde son nom de fichier d'origine (`appli-cuisine.jks`) : une clé de signature est
-un secret, pas un nom d'application, et la renommer n'apporterait rien. De même pour l'AVD.
+L'ancienne clé `~/keystores/appli-cuisine.jks` n'est plus utilisée : aucune version signée
+avec elle n'a été distribuée, et son mot de passe n'était pas conservé dans le dépôt. La clé
+de référence est désormais `cabas-release.jks` (RSA 4096, valide 30 ans).
 
-> **À sauvegarder** : `~/keystores/appli-cuisine.jks` et `keystore.properties`. Cette clé
+> **À sauvegarder** : `cabas-release.jks` et `keystore.properties`. Cette clé
 > est la seule qui permette de publier une mise à jour installable par-dessus l'app
 > existante. Perdue, il faudrait désinstaller l'application avant de pouvoir en réinstaller
 > une nouvelle version — et les données locales seraient effacées.
 
 Un APK release et un APK debug ne peuvent pas cohabiter sur un même appareil : leurs
 signatures diffèrent. Désinstaller l'un avant d'installer l'autre.
+
+### Installer sur un téléphone depuis les releases GitHub
+
+Chaque tag `v*` poussé sur le dépôt déclenche le workflow
+[`.github/workflows/release.yml`](.github/workflows/release.yml) : GitHub Actions lance les
+tests, construit l'APK release **signé** et le publie dans une release. Depuis le téléphone,
+il n'y a donc rien à brancher — ouvrir dans le navigateur :
+
+**<https://github.com/sjry/cabas/releases/latest>**
+
+puis toucher le fichier `cabas-<version>.apk` et l'ouvrir une fois téléchargé. Android
+demande la première fois d'autoriser l'installation depuis le navigateur
+(*Installer des applications inconnues*). Cette URL ne change jamais : elle pointe toujours
+vers la dernière version publiée, ce qui la rend facile à mettre en favori ou en QR code.
+
+#### Publier une nouvelle version
+
+```bash
+git tag v1.1 && git push origin v1.1
+```
+
+Le `versionName` est déduit du tag (`v1.1` → `1.1`) et le `versionCode` est le numéro de
+build GitHub, donc strictement croissant : les mises à jour s'installent par-dessus la
+précédente sans perdre les données. Le workflow se lance aussi à la main depuis l'onglet
+*Actions* (la release s'appelle alors `v0.0.0-build<n>`), utile pour tester la chaîne sans
+consommer un numéro de version.
+
+#### Secrets à configurer une fois
+
+La clé de signature n'est pas versionnée : le workflow la reconstitue depuis les secrets du
+dépôt (*Settings > Secrets and variables > Actions*). Sans eux, la build échoue avec un
+message explicite plutôt que de produire un APK non installable.
+
+| Secret | Contenu |
+|---|---|
+| `KEYSTORE_BASE64` | le `.jks` encodé : `base64 -w0 <clé>.jks` |
+| `KEYSTORE_PASSWORD` | `storePassword` de `keystore.properties` |
+| `KEY_ALIAS` | `keyAlias` |
+| `KEY_PASSWORD` | `keyPassword` |
 
 ### Émulateur
 
