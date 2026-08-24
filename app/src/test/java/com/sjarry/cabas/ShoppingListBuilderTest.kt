@@ -137,4 +137,40 @@ class ShoppingListBuilderTest {
     fun `un menu vide donne une liste vide`() {
         assertTrue(ShoppingListBuilder.build(emptyList()).isEmpty)
     }
+
+    @Test
+    fun `un article pris quitte la liste principale pour la section des pris`() {
+        val riz = ShoppingListBuilder.keyOf(g("riz basmati", 150.0))
+        val list = ShoppingListBuilder.build(listOf(curry), setOf(riz))
+
+        assertEquals(2, list.remaining.size)
+        assertTrue(list.remaining.none { it.key == riz })
+        assertEquals(listOf(riz), list.taken.map { it.key })
+        assertFalse(list.isComplete)
+    }
+
+    @Test
+    fun `une liste entierement cochee est complete et n a plus rien a prendre`() {
+        val keys = ShoppingListBuilder.aggregate(listOf(curry, salade)).map { it.key }.toSet()
+        val list = ShoppingListBuilder.build(listOf(curry, salade), keys)
+
+        assertTrue(list.isComplete)
+        assertTrue(list.remaining.isEmpty())
+        assertEquals(list.itemCount, list.taken.size)
+    }
+
+    @Test
+    fun `une liste vide n est pas une liste complete`() {
+        assertFalse(ShoppingListBuilder.build(emptyList()).isComplete)
+    }
+
+    @Test
+    fun `une recette dont tout est pris n a plus rien a prendre`() {
+        val keys = curry.ingredients.map { ShoppingListBuilder.keyOf(it) }.toSet()
+        val sections = ShoppingListBuilder.sections(listOf(curry, salade), keys)
+
+        assertTrue(sections.first { it.recipeId == 1L }.remaining.isEmpty())
+        // « riz basmati » est partagé : la salade en a un de coché, pas les deux.
+        assertEquals(1, sections.first { it.recipeId == 2L }.remaining.size)
+    }
 }

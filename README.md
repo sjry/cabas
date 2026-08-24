@@ -94,6 +94,13 @@ mais une cuillère ne sera jamais convertie en millilitres.
    *Total (A→Z)* avec les ingrédients fusionnés, ou *Par recette*. Les cases cochées
    sont conservées, y compris après un changement du nombre de convives.
 
+   Un article coché quitte la liste principale et rejoint la section **Pris (n)**,
+   repliée en bas de l'écran : à l'usage, seul ce qu'il reste à prendre occupe l'écran.
+   La section se déplie d'un appui, et décocher un article le remet dans la liste.
+   En vue *Par recette*, une recette dont tout est pris se réduit à une ligne
+   « ✓ *titre* — complet ». Quand plus rien ne reste, la liste est remplacée par
+   **« Tout est dans le cabas »** et un bouton *Tout décocher*.
+
 Tout est stocké localement sur le téléphone (Room / SQLite). Aucune connexion réseau n'est utilisée.
 
 ## Compiler et lancer

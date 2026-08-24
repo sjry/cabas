@@ -42,10 +42,15 @@ exemples/                quatre recettes markdown d'exemple
 ## Commandes
 
 ```bash
+export ANDROID_HOME=/home/sjarry/Android/Sdk           # si local.properties est absent
 JAVA_HOME=~/.jdks/jbr-21.0.11 ./gradlew test           # tests unitaires JVM
 JAVA_HOME=~/.jdks/jbr-21.0.11 ./gradlew assembleDebug  # APK debug
 JAVA_HOME=~/.jdks/jbr-21.0.11 ./gradlew installDebug   # installe sur l'appareil connecté
 ```
+
+`local.properties` n'étant pas versionné, il peut manquer sur un dépôt fraîchement cloné :
+Gradle échoue alors dès la configuration sur `SDK location not found`, y compris pour
+`./gradlew test`. Exporter `ANDROID_HOME` suffit, sans créer le fichier.
 
 **Le `JAVA_HOME` n'est pas décoratif** : le `java` du PATH de cette machine est un JDK 11, et
 le plugin Android exige 17+. Sans lui, la build échoue immédiatement avec
@@ -54,7 +59,7 @@ le plugin Android exige 17+. Sans lui, la build échoue immédiatement avec
 
 ## Ce que les tests couvrent — et ne couvrent pas
 
-32 tests JUnit, tous en JVM pure : `RecipeParserTest`, `QuantityFormatterTest`,
+36 tests JUnit, tous en JVM pure : `RecipeParserTest`, `QuantityFormatterTest`,
 `ShoppingListBuilderTest`. **Aucun test instrumenté** (`app/src/androidTest` n'existe pas,
 la seule dépendance de test est `junit`). `./gradlew connectedAndroidTest` n'a donc rien à
 exécuter : toute modification d'interface se vérifie à la main sur l'émulateur.
@@ -87,6 +92,13 @@ vivre, précisément pour rester testable sans appareil.
 - Un ingrédient sans quantité (`unspecified`) n'est jamais multiplié : il s'affiche `qs`.
 - Les cases cochées de la liste de courses sont liées à une clé stable
   (`ShoppingListBuilder.keyOf`, nom normalisé + unité) pour survivre au recalcul.
+  Cette clé étant partagée, cocher « sel » le coche dans **toutes** les recettes qui en
+  demandent : c'est voulu, on ne l'achète qu'une fois.
+- L'écran Courses n'affiche que `ShoppingList.remaining` ; les articles cochés partent
+  dans `taken`, section « Pris (n) » repliable en bas de liste (état dans le ViewModel,
+  volontairement non persisté, comme le choix de vue). `isComplete` exige une liste
+  **non vide** : un menu vide n'est pas une liste terminée, il n'a rien à acheter — les
+  deux cas ont chacun leur écran.
 - Les trois onglets sont frères : tout passage de l'un à l'autre passe par
   `NavHostController.switchToTab`, jamais par un `navigate` direct.
 - Le détail d'une recette prend un argument de navigation optionnel `servings`
@@ -99,6 +111,51 @@ vivre, précisément pour rester testable sans appareil.
 de monter la version, d'ajouter une `Migration` (voir `MIGRATION_1_2`) et de committer le
 nouveau JSON de `app/schemas/`. `fallbackToDestructiveMigration()` est actif : une migration
 oubliée efface silencieusement les données de l'utilisateur au lieu de planter.
+
+## L'icône de l'application
+
+Un cabas de courses rempli, entièrement vectoriel : **aucun PNG**, `minSdk = 26` garantit que
+`mipmap-anydpi-v26/` est toujours la source. Trois fichiers, plus la couleur de fond :
+
+```
+drawable/ic_launcher_foreground.xml    le cabas, l'anse et les trois produits
+drawable/ic_launcher_monochrome.xml    la même silhouette d'un seul ton (Android 13+)
+mipmap-anydpi-v26/ic_launcher.xml      l'assemblage adaptatif
+values/ic_launcher_background.xml      #2E7D5B, le vert de l'application
+```
+
+**Les contraintes de tracé ne sont pas négociables** — c'est ce qui décide si l'icône est
+lisible sur un téléphone :
+
+- Le canevas fait 108 dp mais le lanceur n'affiche que les **72 dp centraux**, et peut rogner
+  jusqu'au **cercle de 66 dp**. Tout doit donc tenir dans un rayon de 33 dp autour de
+  (54,54) — l'AVD de cette machine utilise justement le masque circulaire.
+- Aucun trait sous **5 dp**, aucune forme sous **12 dp** : en dessous, la réduction à 28 px
+  transforme le détail en bouillie. Un aperçu sur le canevas entier trompe complètement sur
+  ce point, il faut regarder l'icône déjà rognée.
+- **L'ordre des tracés est le dessin** : l'anse d'abord (elle passe derrière), puis les
+  produits, puis le corps du cabas qui recouvre leur base. C'est ce qui donne l'impression
+  qu'ils débordent du rebord. Les extrémités de l'anse retombent *sous* le rebord pour
+  disparaître derrière le corps au lieu de faire deux bosses.
+- La couche monochrome n'est pas la couche avant recoloriée : tout y étant d'un seul ton,
+  deux formes qui se touchent n'en font plus qu'une. Elle a donc sa propre géométrie, avec
+  des **vides explicites** (≈ 3,5 dp sous les produits, 4,5 dp sous l'anse) là où la couleur
+  suffisait à séparer. Sans eux, contenu et cabas fusionnent en un couvercle festonné.
+
+Pièges rencontrés :
+
+- Le manifeste déclare `android:roundIcon="@mipmap/ic_launcher"`, **pas** `ic_launcher_round`.
+  Le fichier `mipmap-anydpi-v26/ic_launcher_round.xml` n'est donc jamais lu : le garder
+  synchronisé à la main, ou le supprimer, mais ne pas croire qu'on le modifie utilement.
+- Les **icônes thématisées** ne s'activent pas sur l'AVD `cuisine_pixel6_api35` : écrire
+  `themed_icons` dans les préférences du lanceur (même avec `adb root` et le cache
+  `app_icons.db` vidé) ne change rien, les icônes Google restent en couleur elles aussi.
+  La couche monochrome se vérifie donc par rendu, pas sur l'appareil.
+- Pour prévisualiser un tracé sans compiler, `chromium-browser --headless --screenshot`
+  sur un SVG reprenant les mêmes chemins fait très bien l'affaire. Mais **Chromium est un
+  snap** : il ne peut ni lire ni écrire dans `/tmp`, qui lui est privé, ni dans les dossiers
+  cachés du `$HOME`. Travailler dans `~/snap/chromium/common/`, sinon `Permission denied` à
+  l'écriture de la capture.
 
 ## Vérifier une modification sur l'émulateur
 
@@ -132,6 +189,9 @@ prochain `recipeId` réutilisé.
 > **Avant de semer des données, prévenir ou repartir propre.** Écrire dans `cabas.db`
 > détruit les recettes déjà présentes sur l'émulateur. `adb shell pm clear com.sjarry.cabas`
 > remet l'application à zéro de façon explicite ; c'est préférable à un `DELETE` partiel.
+> Attention à l'ordre après un `pm clear` : le fichier `cabas.db` n'existe plus, il faut
+> **lancer l'application une fois** (Room le recrée) puis la `force-stop` avant de semer,
+> sinon `sqlite3` écrit dans une base sans tables.
 
 **Piloter et regarder l'écran.** `adb shell input tap X Y` en coordonnées appareil
 (1080 × 2400 sur cet AVD). Une capture brute dépasse la limite de 2000 px de l'outil de

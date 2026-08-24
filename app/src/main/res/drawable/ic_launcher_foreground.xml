@@ -1,15 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cabas de courses rempli, couche avant de l'icône adaptative.
+
+  Le canevas fait 108 dp mais le lanceur n'en affiche que les 72 dp centraux, et
+  peut rogner jusqu'au cercle de 66 dp : tout le dessin tient donc dans un rayon
+  de 33 dp autour de (54,54). Aucun trait n'est sous 5 dp, aucune forme sous
+  12 dp — en dessous, la réduction à 28 px transforme le détail en bouillie.
+
+  L'ordre des tracés est le dessin : l'anse d'abord (elle passe derrière), puis
+  les produits, puis le corps du cabas qui recouvre leur base. C'est ce qui donne
+  l'impression qu'ils débordent du rebord.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Anse. Elle retombe sous le rebord (y=56) pour que ses extrémités
+         disparaissent derrière le corps du cabas au lieu de faire deux bosses. -->
+    <path
+        android:pathData="M 32,56 A 22,32 0 0 1 76,56"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5.5" />
+
+    <!-- Les trois produits, du plus en retrait au plus en avant. -->
+    <path
+        android:fillColor="#F2A03D"
+        android:pathData="M 31.5,47 a 7.5,7.5 0 1,0 15,0 a 7.5,7.5 0 1,0 -15,0 z" />
+    <path
+        android:fillColor="#C6E36B"
+        android:pathData="M 61.5,47 a 7.5,7.5 0 1,0 15,0 a 7.5,7.5 0 1,0 -15,0 z" />
+    <path
+        android:fillColor="#E0523C"
+        android:pathData="M 45,44 a 9,9 0 1,0 18,0 a 9,9 0 1,0 -18,0 z" />
+
+    <!-- Corps du cabas, tracé en dernier : il masque le bas des produits. -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M38,30h32a4,4 0,0 1,4 4v40a8,8 0,0 1,-8 8h-24a8,8 0,0 1,-8 -8v-40a4,4 0,0 1,4 -4z" />
-    <path
-        android:fillColor="#2E7D5B"
-        android:pathData="M46,42h16v4h-16z M46,52h16v4h-16z M46,62h16v4h-16z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M44,24h20v8h-20z" />
+        android:pathData="M 26,52 L 82,52 L 76,76 Q 74.5,80 70,80 L 38,80 Q 33.5,80 32,76 Z" />
 </vector>
