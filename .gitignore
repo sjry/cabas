@@ -3,7 +3,10 @@
 /local.properties
 /.idea/
 .DS_Store
+# « /build » ne vise que la racine : le dossier de build du module se nomme
+# « app/build » et doit être ignoré explicitement.
 /build
+app/build/
 /captures
 .externalNativeBuild
 .cxx
