@@ -55,7 +55,7 @@ import com.sjarry.cabas.ui.common.servingsLabel
 fun MenuScreen(
     onOpenShoppingList: () -> Unit,
     onGoToRecipes: () -> Unit,
-    onOpenRecipe: (Long) -> Unit,
+    onOpenRecipe: (recipeId: Long, servings: Int) -> Unit,
     viewModel: MenuViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -109,7 +109,7 @@ fun MenuScreen(
                                 ingredientCount = entry.ingredients.size,
                                 onServingsChange = { viewModel.changeServings(entry.recipeId, it) },
                                 onRemove = { viewModel.removeRecipe(entry.recipeId) },
-                                onOpen = { onOpenRecipe(entry.recipeId) },
+                                onOpen = { onOpenRecipe(entry.recipeId, entry.servings) },
                                 done = entry.done,
                                 onDoneChange = { viewModel.setDone(entry.recipeId, it) },
                             )
