@@ -26,6 +26,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -35,6 +37,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sjarry.cabas.data.model.ShoppingItem
+import com.sjarry.cabas.parser.IngredientCategory
 import com.sjarry.cabas.ui.AppViewModelProvider
 import com.sjarry.cabas.ui.common.EmptyState
 import com.sjarry.cabas.ui.common.clickableListItem
@@ -59,6 +65,10 @@ fun ShoppingScreen(
     val list by viewModel.shoppingList.collectAsStateWithLifecycle()
     val view by viewModel.view.collectAsStateWithLifecycle()
     val takenExpanded by viewModel.takenExpanded.collectAsStateWithLifecycle()
+
+    // L'article dont on est en train de corriger le rayon. État d'affichage local,
+    // comme le choix de vue : il n'a aucun sens après un retour à l'écran.
+    var editing by remember { mutableStateOf<ShoppingItem?>(null) }
 
     Scaffold(
         topBar = {
@@ -95,16 +105,23 @@ fun ShoppingScreen(
             SingleChoiceSegmentedButtonRow(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
+                // Libellés courts : à trois segments, « Total (A→Z) » ne tient plus
+                // sur un écran étroit et se fait tronquer.
+                SegmentedButton(
+                    selected = view == ShoppingView.AISLE,
+                    onClick = { viewModel.showView(ShoppingView.AISLE) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                ) { Text("Rayon") }
                 SegmentedButton(
                     selected = view == ShoppingView.TOTAL,
                     onClick = { viewModel.showView(ShoppingView.TOTAL) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                ) { Text("Total (A→Z)") }
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                ) { Text("A→Z") }
                 SegmentedButton(
                     selected = view == ShoppingView.BY_RECIPE,
                     onClick = { viewModel.showView(ShoppingView.BY_RECIPE) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                ) { Text("Par recette") }
+                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                ) { Text("Recette") }
             }
 
             ProgressHeader(checked = list.checkedCount, total = list.itemCount)
@@ -121,8 +138,32 @@ fun ShoppingScreen(
                     }
                 } else {
                     when (view) {
+                        ShoppingView.AISLE -> list.aisles.forEach { aisle ->
+                            // Un rayon vidé disparaît purement et simplement : ce n'est
+                            // qu'un repère de parcours, pas un jalon du menu comme une
+                            // recette terminée.
+                            if (aisle.remaining.isEmpty()) return@forEach
+                            item(key = "aisle-${aisle.category.name}") {
+                                AisleHeader(aisle.category.label)
+                            }
+                            items(
+                                items = aisle.remaining,
+                                key = { "aisle-${aisle.category.name}-${it.key}" },
+                            ) { item ->
+                                ShoppingRow(
+                                    item = item,
+                                    onLongClick = { editing = item },
+                                    onCheckedChange = { checked -> viewModel.toggle(item.key, checked) },
+                                )
+                            }
+                        }
+
                         ShoppingView.TOTAL -> items(list.remaining, key = { it.key }) { item ->
-                            ShoppingRow(item) { checked -> viewModel.toggle(item.key, checked) }
+                            ShoppingRow(
+                                item = item,
+                                onLongClick = { editing = item },
+                                onCheckedChange = { checked -> viewModel.toggle(item.key, checked) },
+                            )
                         }
 
                         ShoppingView.BY_RECIPE -> list.sections.forEach { section ->
@@ -140,7 +181,11 @@ fun ShoppingScreen(
                                     items = section.remaining,
                                     key = { "${section.recipeId}-${it.key}" },
                                 ) { item ->
-                                    ShoppingRow(item) { checked -> viewModel.toggle(item.key, checked) }
+                                    ShoppingRow(
+                                        item = item,
+                                        onLongClick = { editing = item },
+                                        onCheckedChange = { checked -> viewModel.toggle(item.key, checked) },
+                                    )
                                 }
                             }
                         }
@@ -157,11 +202,79 @@ fun ShoppingScreen(
                     }
                     if (takenExpanded) {
                         items(list.taken, key = { "taken-${it.key}" }) { item ->
-                            ShoppingRow(item) { checked -> viewModel.toggle(item.key, checked) }
+                            ShoppingRow(
+                                item = item,
+                                onLongClick = { editing = item },
+                                onCheckedChange = { checked -> viewModel.toggle(item.key, checked) },
+                            )
                         }
                     }
                 }
             }
+        }
+
+        editing?.let { item ->
+            CategorySheet(
+                item = item,
+                onDismiss = { editing = null },
+                onPick = { category ->
+                    viewModel.setCategory(item.name, category)
+                    editing = null
+                },
+                onReset = {
+                    viewModel.resetCategory(item.name)
+                    editing = null
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Correction du rayon d'un article. Ouverte par un appui long : l'action est utile
+ * mais rare, elle ne mérite pas de place permanente sur une ligne de liste.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategorySheet(
+    item: ShoppingItem,
+    onDismiss: () -> Unit,
+    onPick: (IngredientCategory) -> Unit,
+    onReset: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            Text(
+                text = item.name,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 24.dp),
+            )
+            Text(
+                text = "Le rayon choisi vaut pour toutes les recettes, et sera retenu.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 8.dp),
+            )
+            IngredientCategory.entries.forEach { category ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickableListItem { onPick(category) }
+                        .padding(horizontal = 24.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    RadioButton(
+                        selected = category == item.category,
+                        onClick = { onPick(category) },
+                    )
+                    Text(category.label)
+                }
+            }
+            TextButton(
+                onClick = onReset,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+            ) { Text("Rayon automatique") }
         }
     }
 }
@@ -272,6 +385,19 @@ private fun CompletedSectionRow(title: String) {
 }
 
 @Composable
+private fun AisleHeader(label: String) {
+    Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+@Composable
 private fun SectionHeader(title: String, servings: Int) {
     Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp)) {
         Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -284,11 +410,24 @@ private fun SectionHeader(title: String, servings: Int) {
     }
 }
 
+/**
+ * Une ligne de la liste. L'appui long corrige le rayon ; l'appui court coche, parce
+ * que `combinedClickable` réclame une action courte et que viser la case à cocher
+ * avec un cabas dans l'autre main n'est pas confortable.
+ */
 @Composable
-private fun ShoppingRow(item: ShoppingItem, onCheckedChange: (Boolean) -> Unit) {
+private fun ShoppingRow(
+    item: ShoppingItem,
+    onLongClick: () -> Unit,
+    onCheckedChange: (Boolean) -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickableListItem(
+                onClick = { onCheckedChange(!item.checked) },
+                onLongClick = onLongClick,
+            )
             .padding(end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),

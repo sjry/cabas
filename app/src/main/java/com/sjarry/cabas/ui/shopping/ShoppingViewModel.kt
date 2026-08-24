@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sjarry.cabas.data.MenuRepository
 import com.sjarry.cabas.data.model.ShoppingList
+import com.sjarry.cabas.parser.IngredientCategory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -11,8 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Les deux présentations demandées de la liste de courses. */
-enum class ShoppingView { TOTAL, BY_RECIPE }
+/** Les trois présentations de la liste de courses. */
+enum class ShoppingView { AISLE, TOTAL, BY_RECIPE }
 
 class ShoppingViewModel(
     private val menuRepository: MenuRepository,
@@ -25,7 +26,9 @@ class ShoppingViewModel(
             ShoppingList(emptyList(), emptyList()),
         )
 
-    private val _view = MutableStateFlow(ShoppingView.TOTAL)
+    // « Rayon » par défaut : c'est la vue qui sert en magasin, les deux autres
+    // répondent à « qu'est-ce que j'achète en tout » et « pour quelle recette ».
+    private val _view = MutableStateFlow(ShoppingView.AISLE)
     val view: StateFlow<ShoppingView> = _view.asStateFlow()
 
     /**
@@ -53,4 +56,12 @@ class ShoppingViewModel(
     }
 
     fun uncheckAll() = viewModelScope.launch { menuRepository.uncheckAll() }
+
+    fun setCategory(name: String, category: IngredientCategory) = viewModelScope.launch {
+        menuRepository.setCategory(name, category)
+    }
+
+    fun resetCategory(name: String) = viewModelScope.launch {
+        menuRepository.resetCategory(name)
+    }
 }

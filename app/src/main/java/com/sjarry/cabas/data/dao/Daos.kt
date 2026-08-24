@@ -8,6 +8,7 @@ import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
 import com.sjarry.cabas.data.entities.CheckedItemEntity
+import com.sjarry.cabas.data.entities.IngredientCategoryEntity
 import com.sjarry.cabas.data.entities.IngredientEntity
 import com.sjarry.cabas.data.entities.MenuEntryEntity
 import com.sjarry.cabas.data.entities.RecipeEntity
@@ -120,4 +121,18 @@ interface CheckedItemDao {
 
     @Query("DELETE FROM checked_items WHERE itemKey NOT IN (:keys)")
     suspend fun keepOnly(keys: List<String>)
+}
+
+@Dao
+interface IngredientCategoryDao {
+
+    @Query("SELECT * FROM ingredient_categories")
+    fun observeAll(): Flow<List<IngredientCategoryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(item: IngredientCategoryEntity)
+
+    /** Oublie la correction : l'ingrédient repasse au rayon deviné par le lexique. */
+    @Query("DELETE FROM ingredient_categories WHERE name = :name")
+    suspend fun delete(name: String)
 }

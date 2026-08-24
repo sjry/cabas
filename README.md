@@ -90,14 +90,21 @@ mais une cuillère ne sera jamais convertie en millilitres.
    de courses. Un appui sur la carte ouvre le détail de la recette, dont les quantités
    sont ajustées au nombre de convives choisi (la même recette ouverte depuis l'onglet
    *Recettes* reste affichée pour 1 personne).
-3. **Courses** — la liste se calcule automatiquement, en deux présentations :
-   *Total (A→Z)* avec les ingrédients fusionnés, ou *Par recette*. Les cases cochées
-   sont conservées, y compris après un changement du nombre de convives.
+3. **Courses** — la liste se calcule automatiquement, en trois présentations :
+   *Rayon* (par défaut), *A→Z* avec les ingrédients fusionnés, ou *Recette*. Les cases
+   cochées sont conservées, y compris après un changement du nombre de convives.
+
+   En vue *Rayon*, les articles sont groupés dans l'ordre du parcours en magasin :
+   Fruits & légumes, Boucherie & poissonnerie, Crémerie, Boulangerie, Épicerie,
+   Surgelés, Divers. Le rayon est deviné à partir du **nom de l'ingrédient** : rien à
+   écrire dans les recettes. Un **appui long** sur un article corrige son rayon ; la
+   correction est retenue et vaut pour toutes les recettes, et *Rayon automatique* la
+   retire. Un appui court sur la ligne coche l'article.
 
    Un article coché quitte la liste principale et rejoint la section **Pris (n)**,
    repliée en bas de l'écran : à l'usage, seul ce qu'il reste à prendre occupe l'écran.
    La section se déplie d'un appui, et décocher un article le remet dans la liste.
-   En vue *Par recette*, une recette dont tout est pris se réduit à une ligne
+   En vue *Recette*, une recette dont tout est pris se réduit à une ligne
    « ✓ *titre* — complet ». Quand plus rien ne reste, la liste est remplacée par
    **« Tout est dans le cabas »** et un bouton *Tout décocher*.
 
@@ -174,8 +181,10 @@ $ANDROID_HOME/emulator/emulator -avd cuisine_pixel6_api35 &
 ## Architecture
 
 ```
-parser/     RecipeParser, IngredientUnit, QuantityFormatter  — Kotlin pur, testé
-data/       Room (recettes, menu, articles cochés), ShoppingListBuilder, imports
+parser/     RecipeParser, IngredientUnit, IngredientCategory, QuantityFormatter
+            — Kotlin pur, testé
+data/       Room (recettes, menu, articles cochés, rayons corrigés),
+            ShoppingListBuilder, imports
 ui/         Compose Material 3 : recettes, détail, menu, liste de courses
 ```
 

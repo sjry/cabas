@@ -1,6 +1,8 @@
 package com.sjarry.cabas.ui.common
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,3 +58,12 @@ fun EmptyState(
 
 /** Rend une ligne de liste cliquable sans répéter le modifier partout. */
 fun Modifier.clickableListItem(onClick: () -> Unit): Modifier = this.clickable(onClick = onClick)
+
+/**
+ * Ligne de liste avec une action secondaire sur appui long. L'appui court reste
+ * obligatoire — `combinedClickable` l'exige — donc toute ligne qui écoute l'appui
+ * long doit aussi faire quelque chose de l'appui court.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+fun Modifier.clickableListItem(onClick: () -> Unit, onLongClick: () -> Unit): Modifier =
+    this.combinedClickable(onClick = onClick, onLongClick = onLongClick)

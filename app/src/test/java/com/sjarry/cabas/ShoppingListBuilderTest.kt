@@ -2,6 +2,7 @@ package com.sjarry.cabas
 
 import com.sjarry.cabas.data.ShoppingListBuilder
 import com.sjarry.cabas.data.model.MenuRecipe
+import com.sjarry.cabas.parser.IngredientCategory
 import com.sjarry.cabas.parser.IngredientUnit
 import com.sjarry.cabas.parser.ParsedIngredient
 import org.junit.Assert.assertEquals
@@ -172,5 +173,59 @@ class ShoppingListBuilderTest {
         assertTrue(sections.first { it.recipeId == 1L }.remaining.isEmpty())
         // « riz basmati » est partagé : la salade en a un de coché, pas les deux.
         assertEquals(1, sections.first { it.recipeId == 2L }.remaining.size)
+    }
+
+    @Test
+    fun `groupe la liste par rayon dans l ordre du parcours`() {
+        val aisles = ShoppingListBuilder.build(listOf(curry, salade)).aisles
+
+        assertEquals(
+            listOf(
+                IngredientCategory.PRODUCE,
+                IngredientCategory.BUTCHER,
+                IngredientCategory.GROCERY,
+            ),
+            aisles.map { it.category },
+        )
+        assertEquals(listOf("tomate"), aisles[0].items.map { it.name })
+        assertEquals(listOf("blanc de poulet"), aisles[1].items.map { it.name })
+        // « lait de coco » est en épicerie, pas en crémerie, et l'ordre alphabétique
+        // de la vue « Total » se retrouve à l'intérieur du rayon.
+        assertEquals(listOf("lait de coco", "riz basmati"), aisles[2].items.map { it.name })
+    }
+
+    @Test
+    fun `un rayon vide de sa derniere ligne n a plus rien a prendre`() {
+        val tomate = ShoppingListBuilder.keyOf(piece("tomate", 2.0))
+        val aisles = ShoppingListBuilder.build(listOf(curry, salade), setOf(tomate)).aisles
+
+        assertTrue(aisles.first { it.category == IngredientCategory.PRODUCE }.remaining.isEmpty())
+        assertEquals(2, aisles.first { it.category == IngredientCategory.GROCERY }.remaining.size)
+    }
+
+    @Test
+    fun `une correction de rayon deplace l article dans les deux vues`() {
+        val overrides = mapOf("riz basmati" to IngredientCategory.OTHER)
+        val list = ShoppingListBuilder.build(listOf(curry, salade), emptySet(), overrides)
+
+        assertEquals(IngredientCategory.OTHER, list.total.first { it.name == "riz basmati" }.category)
+        assertTrue(
+            list.sections.flatMap { it.items }
+                .filter { ShoppingListBuilder.normalizeName(it.name) == "riz basmati" }
+                .all { it.category == IngredientCategory.OTHER },
+        )
+        // « Divers » ferme la marche.
+        assertEquals(IngredientCategory.OTHER, list.aisles.last().category)
+    }
+
+    @Test
+    fun `corriger le rayon ne change pas la cle de l article`() {
+        val riz = ShoppingListBuilder.build(listOf(curry)).total.first { it.name == "riz basmati" }
+        val overrides = mapOf("riz basmati" to IngredientCategory.FROZEN)
+        val corrige = ShoppingListBuilder.build(listOf(curry), setOf(riz.key), overrides)
+            .total.first { it.name == "riz basmati" }
+
+        assertEquals(riz.key, corrige.key)
+        assertTrue(corrige.checked)
     }
 }

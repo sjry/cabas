@@ -29,13 +29,14 @@ et en déduit une liste de courses.
 
 ```
 app/src/main/java/com/sjarry/cabas/
-  parser/    RecipeParser, IngredientUnit, QuantityFormatter — Kotlin pur, sans Android, testé
+  parser/    RecipeParser, IngredientUnit, IngredientCategory, QuantityFormatter
+             — Kotlin pur, sans Android, testé
   data/      Room (AppDatabase, entities/, dao/), RecipeRepository, MenuRepository,
              ShoppingListBuilder (logique pure), SettingsStore (DataStore)
   ui/        Navigation.kt + un dossier par écran (recipes, detail, menu, shopping),
              common/ pour les composables et le formatage partagés
 app/src/test/            tests JUnit JVM (parseur, formatage, liste de courses)
-app/schemas/             schémas Room exportés (2.json) — versionnés, à committer
+app/schemas/             schémas Room exportés (3.json) — versionnés, à committer
 exemples/                quatre recettes markdown d'exemple
 ```
 
@@ -59,10 +60,11 @@ le plugin Android exige 17+. Sans lui, la build échoue immédiatement avec
 
 ## Ce que les tests couvrent — et ne couvrent pas
 
-36 tests JUnit, tous en JVM pure : `RecipeParserTest`, `QuantityFormatterTest`,
-`ShoppingListBuilderTest`. **Aucun test instrumenté** (`app/src/androidTest` n'existe pas,
-la seule dépendance de test est `junit`). `./gradlew connectedAndroidTest` n'a donc rien à
-exécuter : toute modification d'interface se vérifie à la main sur l'émulateur.
+50 tests JUnit, tous en JVM pure : `RecipeParserTest`, `QuantityFormatterTest`,
+`ShoppingListBuilderTest`, `IngredientCategoryTest`. **Aucun test instrumenté**
+(`app/src/androidTest` n'existe pas, la seule dépendance de test est `junit`).
+`./gradlew connectedAndroidTest` n'a donc rien à exécuter : toute modification
+d'interface se vérifie à la main sur l'émulateur.
 
 Toute logique nouvelle qui peut vivre dans `parser/` ou dans `ShoppingListBuilder` doit y
 vivre, précisément pour rester testable sans appareil.
@@ -94,9 +96,20 @@ vivre, précisément pour rester testable sans appareil.
   (`ShoppingListBuilder.keyOf`, nom normalisé + unité) pour survivre au recalcul.
   Cette clé étant partagée, cocher « sel » le coche dans **toutes** les recettes qui en
   demandent : c'est voulu, on ne l'achète qu'une fois.
+- **Le rayon d'un article se déduit de son nom, jamais de la recette** : le sel est au
+  même endroit quel que soit le plat. Le lexique est dans
+  [IngredientCategory.kt](app/src/main/java/com/sjarry/cabas/parser/IngredientCategory.kt),
+  où **le plus long mot-clé l'emporte** — c'est ce qui met « lait de coco » en épicerie
+  et « lait » en crémerie. Un ingrédient annoncé surgelé court-circuite le lexique.
+  Une correction de l'utilisateur (table `ingredient_categories`, clé = nom normalisé)
+  l'emporte sur le lexique ; elle n'est jamais purgée avec le menu, contrairement aux
+  cases cochées : elle décrit le magasin, pas les courses en cours.
+- **Le rayon n'entre pas dans `keyOf`.** Corriger un rayon ne doit ni décocher l'article
+  ni le dédoubler ; `ShoppingListBuilderTest` garde un test là-dessus.
 - L'écran Courses n'affiche que `ShoppingList.remaining` ; les articles cochés partent
   dans `taken`, section « Pris (n) » repliable en bas de liste (état dans le ViewModel,
-  volontairement non persisté, comme le choix de vue). `isComplete` exige une liste
+  volontairement non persisté, comme le choix de vue, qui s'ouvre sur « Rayon »).
+  `isComplete` exige une liste
   **non vide** : un menu vide n'est pas une liste terminée, il n'a rien à acheter — les
   deux cas ont chacun leur écran.
 - Les trois onglets sont frères : tout passage de l'un à l'autre passe par
@@ -107,7 +120,7 @@ vivre, précisément pour rester testable sans appareil.
 
 ## Modifier la base
 
-`AppDatabase` est en `version = 2`, `exportSchema = true`. Un changement de schéma impose
+`AppDatabase` est en `version = 3`, `exportSchema = true`. Un changement de schéma impose
 de monter la version, d'ajouter une `Migration` (voir `MIGRATION_1_2`) et de committer le
 nouveau JSON de `app/schemas/`. `fallbackToDestructiveMigration()` est actif : une migration
 oubliée efface silencieusement les données de l'utilisateur au lieu de planter.

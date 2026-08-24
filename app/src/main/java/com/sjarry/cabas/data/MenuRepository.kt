@@ -2,9 +2,11 @@ package com.sjarry.cabas.data
 
 import com.sjarry.cabas.data.dao.MenuEntryWithRecipe
 import com.sjarry.cabas.data.entities.CheckedItemEntity
+import com.sjarry.cabas.data.entities.IngredientCategoryEntity
 import com.sjarry.cabas.data.entities.MenuEntryEntity
 import com.sjarry.cabas.data.model.MenuRecipe
 import com.sjarry.cabas.data.model.ShoppingList
+import com.sjarry.cabas.parser.IngredientCategory
 import com.sjarry.cabas.parser.ParsedIngredient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -21,6 +23,7 @@ class MenuRepository(private val db: AppDatabase) {
 
     private val menuDao = db.menuDao()
     private val checkedDao = db.checkedItemDao()
+    private val categoryDao = db.ingredientCategoryDao()
 
     fun observeMenu(): Flow<List<MenuRecipe>> =
         menuDao.observeMenu().map { entries -> entries.map { it.toMenuRecipe() } }
@@ -28,10 +31,21 @@ class MenuRepository(private val db: AppDatabase) {
     fun observeMenuRecipeIds(): Flow<Set<Long>> =
         menuDao.observeMenuRecipeIds().map { it.toSet() }
 
-    /** Liste de courses recalculée à chaque changement du menu ou des cases cochées. */
+    /**
+     * Liste de courses recalculée à chaque changement du menu, des cases cochées ou
+     * des rayons corrigés.
+     */
     fun observeShoppingList(): Flow<ShoppingList> =
-        combine(observeMenu(), checkedDao.observeChecked()) { menu, checked ->
-            ShoppingListBuilder.build(menu, checked.toSet())
+        combine(
+            observeMenu(),
+            checkedDao.observeChecked(),
+            categoryDao.observeAll(),
+        ) { menu, checked, categories ->
+            ShoppingListBuilder.build(
+                menu = menu,
+                checkedKeys = checked.toSet(),
+                categoryOverrides = categories.associate { it.name to it.category },
+            )
         }
 
     suspend fun addRecipes(recipeIds: Collection<Long>, servings: Int = DEFAULT_SERVINGS) =
@@ -72,6 +86,23 @@ class MenuRepository(private val db: AppDatabase) {
     }
 
     suspend fun uncheckAll() = withContext(Dispatchers.IO) { checkedDao.clear() }
+
+    /**
+     * Corrige le rayon d'un ingrédient, pour de bon. Rangé sous le nom normalisé : la
+     * correction vaut dans toutes les recettes, et n'est jamais purgée avec le menu —
+     * contrairement aux cases cochées, elle décrit le magasin, pas les courses en cours.
+     */
+    suspend fun setCategory(name: String, category: IngredientCategory) =
+        withContext(Dispatchers.IO) {
+            categoryDao.upsert(
+                IngredientCategoryEntity(ShoppingListBuilder.normalizeName(name), category),
+            )
+        }
+
+    /** Rend l'ingrédient au lexique. */
+    suspend fun resetCategory(name: String) = withContext(Dispatchers.IO) {
+        categoryDao.delete(ShoppingListBuilder.normalizeName(name))
+    }
 
     /** Retire les cases cochées dont l'article n'est plus dans la liste. */
     private suspend fun pruneCheckedItems() {

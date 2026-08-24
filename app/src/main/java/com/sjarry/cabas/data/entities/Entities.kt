@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.sjarry.cabas.parser.IngredientCategory
 import com.sjarry.cabas.parser.IngredientUnit
 
 /** Une recette importée. Les quantités qu'elle porte sont toujours pour 1 personne. */
@@ -86,4 +87,16 @@ data class MenuEntryEntity(
 @Entity(tableName = "checked_items")
 data class CheckedItemEntity(
     @PrimaryKey val itemKey: String,
+)
+
+/**
+ * Rayon corrigé à la main pour un ingrédient. La clé est le **nom normalisé**
+ * ([ShoppingListBuilder.normalizeName]) : la correction vaut donc pour toutes les
+ * recettes, et survit à la suppression du menu — c'est un apprentissage, pas un
+ * état de course.
+ */
+@Entity(tableName = "ingredient_categories")
+data class IngredientCategoryEntity(
+    @PrimaryKey val name: String,
+    val category: IngredientCategory,
 )
