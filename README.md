@@ -197,9 +197,11 @@ consommer un numéro de version.
 
 #### Secrets à configurer une fois
 
-La clé de signature n'est pas versionnée : le workflow la reconstitue depuis les secrets du
-dépôt (*Settings > Secrets and variables > Actions*). Sans eux, la build échoue avec un
-message explicite plutôt que de produire un APK non installable.
+La clé de signature n'est pas versionnée : le workflow la reconstitue depuis les secrets de
+l'environment **`prod`** (*Settings > Environments > prod > Environment secrets*). Le job
+déclare `environment: prod` — sans cette déclaration, GitHub n'injecterait que les secrets
+du dépôt et la build échouerait sur `Secret KEYSTORE_BASE64 absent`. Cet échec est
+volontaire : mieux vaut un message clair qu'un APK non signé, donc non installable.
 
 | Secret | Contenu |
 |---|---|

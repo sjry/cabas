@@ -240,6 +240,9 @@ et des secrets dans le README.
 - `versionCode`/`versionName` sont surchargeables par propriétés Gradle
   (`-PversionCode= -PversionName=`) et valent 1 / « 1.0 » par défaut. La CI passe le numéro
   de build en `versionCode` : croissant, donc mise à jour installable par-dessus.
+- Les secrets de signature sont dans l'**environment `prod`**, pas dans les secrets du
+  dépôt : le job doit déclarer `environment: prod`, sinon `secrets.KEYSTORE_BASE64` arrive
+  vide et la build échoue sur « Secret KEYSTORE_BASE64 absent ».
 - La CI reconstitue `keystore.properties` depuis les secrets, exactement comme en local.
   Elle **échoue volontairement** si `KEYSTORE_BASE64` manque : un APK release non signé ne
   s'installe pas, mieux vaut un message clair qu'un artefact inutilisable.

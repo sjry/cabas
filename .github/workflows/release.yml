@@ -16,6 +16,9 @@ permissions:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    # Les secrets de signature vivent dans l'environment « prod » : sans cette ligne,
+    # GitHub n'injecte que les secrets du dépôt et `secrets.KEYSTORE_BASE64` est vide.
+    environment: prod
     steps:
       - uses: actions/checkout@v4
 
