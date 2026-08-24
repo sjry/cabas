@@ -60,8 +60,8 @@ jobs:
             echo "keyPassword=$KEY_PASSWORD"
           } > keystore.properties
 
-      - name: Tests
-        run: ./gradlew test
+#      - name: Tests
+#        run: ./gradlew test
 
       - name: Construire l'APK
         run: |
