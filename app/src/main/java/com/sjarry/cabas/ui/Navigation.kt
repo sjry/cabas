@@ -27,14 +27,18 @@ import com.sjarry.cabas.ui.recipes.RecipesScreen
 import com.sjarry.cabas.ui.shopping.ShoppingScreen
 
 const val RECIPE_ID_ARG = "recipeId"
+const val SERVINGS_ARG = "servings"
+
+/** Convives par défaut quand la recette est ouverte hors du menu : la recette telle qu'elle est écrite. */
+const val DETAIL_DEFAULT_SERVINGS = 1
 
 object Routes {
     const val RECIPES = "recipes"
     const val MENU = "menu"
     const val SHOPPING = "shopping"
-    const val RECIPE_DETAIL = "recipe/{$RECIPE_ID_ARG}"
+    const val RECIPE_DETAIL = "recipe/{$RECIPE_ID_ARG}?$SERVINGS_ARG={$SERVINGS_ARG}"
 
-    fun recipeDetail(id: Long) = "recipe/$id"
+    fun recipeDetail(id: Long, servings: Int = DETAIL_DEFAULT_SERVINGS) = "recipe/$id?$SERVINGS_ARG=$servings"
 }
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
@@ -79,7 +83,9 @@ fun CabasApp() {
                 MenuScreen(
                     onOpenShoppingList = { navController.switchToTab(Routes.SHOPPING, Routes.MENU) },
                     onGoToRecipes = { navController.switchToTab(Routes.RECIPES, Routes.MENU) },
-                    onOpenRecipe = { navController.navigate(Routes.recipeDetail(it)) },
+                    onOpenRecipe = { id, servings ->
+                        navController.navigate(Routes.recipeDetail(id, servings))
+                    },
                 )
             }
             composable(Routes.SHOPPING) {
@@ -87,7 +93,13 @@ fun CabasApp() {
             }
             composable(
                 route = Routes.RECIPE_DETAIL,
-                arguments = listOf(navArgument(RECIPE_ID_ARG) { type = NavType.LongType }),
+                arguments = listOf(
+                    navArgument(RECIPE_ID_ARG) { type = NavType.LongType },
+                    navArgument(SERVINGS_ARG) {
+                        type = NavType.IntType
+                        defaultValue = DETAIL_DEFAULT_SERVINGS
+                    },
+                ),
             ) {
                 RecipeDetailScreen(onBack = { navController.popBackStack() })
             }

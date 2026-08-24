@@ -87,7 +87,9 @@ mais une cuillère ne sera jamais convertie en millilitres.
 2. **Menu** — ajouter des recettes et régler le nombre de personnes pour chacune.
    Une case à cocher par recette permet de suivre ce qui a déjà été cuisiné : la recette
    cochée est estompée mais reste dans le menu, et ses ingrédients restent dans la liste
-   de courses. Un appui sur la carte ouvre le détail de la recette.
+   de courses. Un appui sur la carte ouvre le détail de la recette, dont les quantités
+   sont ajustées au nombre de convives choisi (la même recette ouverte depuis l'onglet
+   *Recettes* reste affichée pour 1 personne).
 3. **Courses** — la liste se calcule automatiquement, en deux présentations :
    *Total (A→Z)* avec les ingrédients fusionnés, ou *Par recette*. Les cases cochées
    sont conservées, y compris après un changement du nombre de convives.
@@ -105,9 +107,18 @@ ou se compile en ligne de commande :
 ./gradlew installDebug   # installation sur un appareil connecté
 ```
 
+Les tests sont des tests JVM purs (parseur, formatage, calcul de liste) : il n'y a pas de
+test instrumenté, l'interface se vérifie à la main sur l'émulateur ou un téléphone.
+
 Prérequis : JDK 17 ou 21, `compileSdk 35`, `minSdk 26` (Android 8.0).
 Gradle 8.9 ne fonctionne pas avec un JDK 25 : si Android Studio propose son JBR embarqué,
 choisir plutôt un JDK 21 dans *Settings > Build Tools > Gradle > Gradle JDK*.
+Sur cette machine, le `java` du PATH est un JDK 11 que le plugin Android refuse ; en ligne
+de commande, préfixer les appels Gradle :
+
+```bash
+JAVA_HOME=~/.jdks/jbr-21.0.11 ./gradlew assembleDebug
+```
 
 ### Deux réglages liés à la machine
 

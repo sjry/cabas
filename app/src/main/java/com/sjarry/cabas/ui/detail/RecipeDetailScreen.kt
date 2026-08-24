@@ -32,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sjarry.cabas.ui.AppViewModelProvider
 import com.sjarry.cabas.ui.common.EmptyState
 import com.sjarry.cabas.ui.common.quantityLabel
+import com.sjarry.cabas.ui.common.servingsLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +41,9 @@ fun RecipeDetailScreen(
     viewModel: RecipeDetailViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val details by viewModel.recipe.collectAsStateWithLifecycle()
+    // Les ingrédients sont stockés pour 1 personne : on les multiplie par les
+    // convives choisis dans le menu, comme le fait la liste de courses.
+    val servings = viewModel.servings
 
     Scaffold(
         topBar = {
@@ -70,7 +74,7 @@ fun RecipeDetailScreen(
         ) {
             item {
                 Text(
-                    "Ingrédients — pour 1 personne",
+                    "Ingrédients — pour ${servingsLabel(servings)}",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
@@ -87,7 +91,7 @@ fun RecipeDetailScreen(
                     Text(ingredient.name, modifier = Modifier.weight(1f))
                     Text(
                         text = quantityLabel(
-                            ingredient.quantity,
+                            ingredient.quantity * servings,
                             ingredient.unit,
                             ingredient.freeUnitLabel,
                             ingredient.unspecified,
