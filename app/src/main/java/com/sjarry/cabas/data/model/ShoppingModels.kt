@@ -32,7 +32,10 @@ data class RecipeSection(
     val title: String,
     val servings: Int,
     val items: List<ShoppingItem>,
-)
+) {
+    /** Ce qu'il reste à prendre pour cette recette : le seul contenu affiché en magasin. */
+    val remaining: List<ShoppingItem> get() = items.filterNot { it.checked }
+}
 
 /** Liste de courses complète, dans ses deux présentations. */
 data class ShoppingList(
@@ -42,4 +45,17 @@ data class ShoppingList(
     val itemCount: Int get() = total.size
     val checkedCount: Int get() = total.count { it.checked }
     val isEmpty: Boolean get() = total.isEmpty()
+
+    /** Articles restant à prendre, dans l'ordre alphabétique de la vue « Total ». */
+    val remaining: List<ShoppingItem> get() = total.filterNot { it.checked }
+
+    /**
+     * Articles déjà pris, relégués dans la section repliable en bas de liste.
+     * Toujours à plat et alphabétiques, quelle que soit la vue : c'est « ce qui
+     * est déjà dans le cabas », pas un reflet du menu.
+     */
+    val taken: List<ShoppingItem> get() = total.filter { it.checked }
+
+    /** Une liste vide n'est pas une liste terminée : rien n'a été acheté. */
+    val isComplete: Boolean get() = total.isNotEmpty() && total.all { it.checked }
 }

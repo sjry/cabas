@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Couche monochrome, utilisée par les icônes thématisées d'Android 13+ : le
+  lanceur reteinte cette silhouette aux couleurs du fond d'écran et n'en garde
+  que le canal alpha — la couleur écrite ici n'a donc aucune importance.
+
+  Même dessin que la couche avant, mais desserré : tout étant d'un seul ton, deux
+  formes qui se touchent n'en font plus qu'une. Il faut donc des vides explicites
+  là où la couleur suffisait à séparer. L'anse est remontée (rayon vertical 36 au
+  lieu de 32) et les produits rentrés, pour dégager 4,5 dp entre eux ; le rebord
+  est descendu à 58 pour laisser 3,5 dp sous les produits. Sans ces vides, le
+  contenu et le cabas fusionnent en un couvercle festonné.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:pathData="M 32,62 A 22,36 0 0 1 76,62"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5.5" />
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 33.5,48 a 6.5,6.5 0 1,0 13,0 a 6.5,6.5 0 1,0 -13,0 z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 61.5,48 a 6.5,6.5 0 1,0 13,0 a 6.5,6.5 0 1,0 -13,0 z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 45.5,44 a 8.5,8.5 0 1,0 17,0 a 8.5,8.5 0 1,0 -17,0 z" />
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 26,58 L 82,58 L 76.5,78 Q 75,81.5 70.5,81.5 L 37.5,81.5 Q 33,81.5 31.5,78 Z" />
+</vector>

@@ -28,8 +28,20 @@ class ShoppingViewModel(
     private val _view = MutableStateFlow(ShoppingView.TOTAL)
     val view: StateFlow<ShoppingView> = _view.asStateFlow()
 
+    /**
+     * Section « Pris » repliée par défaut : en magasin, ce qui compte est ce
+     * qu'il reste à prendre. Choix d'affichage volontairement non persisté,
+     * comme le choix de vue.
+     */
+    private val _takenExpanded = MutableStateFlow(false)
+    val takenExpanded: StateFlow<Boolean> = _takenExpanded.asStateFlow()
+
     fun showView(view: ShoppingView) {
         _view.value = view
+    }
+
+    fun toggleTaken() {
+        _takenExpanded.value = !_takenExpanded.value
     }
 
     fun toggle(key: String, checked: Boolean) = viewModelScope.launch {
