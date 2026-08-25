@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Remove
@@ -27,12 +28,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,9 +48,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sjarry.cabas.data.MenuDraw
 import com.sjarry.cabas.data.MenuRepository
 import com.sjarry.cabas.ui.AppViewModelProvider
 import com.sjarry.cabas.ui.common.EmptyState
+import com.sjarry.cabas.ui.common.recipesLabel
 import com.sjarry.cabas.ui.common.servingsLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,6 +66,7 @@ fun MenuScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var confirmClear by remember { mutableStateOf(false) }
+    var drawing by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -93,6 +99,9 @@ fun MenuScreen(
                     message = "Ajoutez des recettes et indiquez pour combien de personnes vous cuisinez.",
                     action = {
                         Button(onClick = onAddRecipes) { Text("Ajouter des recettes") }
+                        // C'est ici que le tirage sert le plus : menu vide, aucune idée de quoi
+                        // cuisiner.
+                        TextButton(onClick = { drawing = true }) { Text("Ou tirer au sort") }
                     },
                 )
 
@@ -121,6 +130,7 @@ fun MenuScreen(
                             .fillMaxWidth()
                             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         OutlinedButton(
                             onClick = onAddRecipes,
@@ -128,6 +138,9 @@ fun MenuScreen(
                         ) {
                             Icon(Icons.Filled.Add, contentDescription = null)
                             Text("Ajouter", modifier = Modifier.padding(start = 8.dp))
+                        }
+                        OutlinedIconButton(onClick = { drawing = true }) {
+                            Icon(Icons.Filled.Casino, contentDescription = "Tirer des recettes au sort")
                         }
                         Button(
                             onClick = onOpenShoppingList,
@@ -139,6 +152,17 @@ fun MenuScreen(
                 }
             }
         }
+    }
+
+    if (drawing) {
+        DrawDialog(
+            availableCount = state.availableCount,
+            onDraw = { count ->
+                viewModel.drawRandom(count)
+                drawing = false
+            },
+            onDismiss = { drawing = false },
+        )
     }
 
     if (confirmClear) {
@@ -157,6 +181,80 @@ fun MenuScreen(
             },
         )
     }
+}
+
+/**
+ * Combien de recettes tirer au sort. Le compteur est plafonné au nombre de recettes hors menu,
+ * et ce nombre est affiché : c'est ce qui évite un tirage qui rendrait moins que demandé sans
+ * rien en dire. « Il n'y a plus rien à tirer » se dit ici aussi, plutôt que par un bouton grisé
+ * sans explication.
+ */
+@Composable
+private fun DrawDialog(
+    availableCount: Int,
+    onDraw: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    // Le plafond vient de la base, donc après le premier rendu : on borne à l'affichage plutôt
+    // qu'à l'initialisation.
+    var requested by remember { mutableIntStateOf(MenuDraw.DEFAULT_COUNT) }
+    val count = requested.coerceIn(1, availableCount.coerceAtLeast(1))
+    val nothingToDraw = availableCount == 0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Tirer au sort") },
+        text = {
+            if (nothingToDraw) {
+                Text("Toutes les recettes importées sont déjà au menu.")
+            } else {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilledTonalIconButton(
+                            onClick = { requested = count - 1 },
+                            enabled = count > 1,
+                        ) {
+                            Icon(Icons.Filled.Remove, contentDescription = "Une recette de moins")
+                        }
+                        Text(
+                            text = recipesLabel(count),
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(1f),
+                        )
+                        FilledTonalIconButton(
+                            onClick = { requested = count + 1 },
+                            enabled = count < availableCount,
+                        ) {
+                            Icon(Icons.Filled.Add, contentDescription = "Une recette de plus")
+                        }
+                    }
+                    Text(
+                        text = "${recipesLabel(availableCount)} hors du menu",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (nothingToDraw) {
+                TextButton(onClick = onDismiss) { Text("Fermer") }
+            } else {
+                TextButton(onClick = { onDraw(count) }) { Text("Tirer au sort") }
+            }
+        },
+        dismissButton = {
+            if (!nothingToDraw) {
+                TextButton(onClick = onDismiss) { Text("Annuler") }
+            }
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

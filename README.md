@@ -101,6 +101,14 @@ mais une cuillère ne sera jamais convertie en millilitres.
    - une **barre de sélection** en bas retient les recettes cochées sous forme de puces,
      visibles où qu'on soit dans la liste et retirables d'un appui sur leur croix ;
    - les recettes déjà au menu n'y figurent pas.
+
+   Pour les soirs sans idée, le bouton **dé** à côté d'*Ajouter* — ou le lien *Ou tirer au
+   sort* quand le menu est vide — **tire des recettes au hasard**. On choisit combien :
+   le compteur ne dépasse jamais le nombre de recettes hors menu, qu'il affiche, si bien
+   qu'un tirage rend toujours exactement ce qu'on a demandé. Une recette déjà au menu n'est
+   jamais retirée au sort, et les recettes tirées arrivent au nombre de convives par défaut,
+   comme celles venues du sélecteur — à ajuster ensuite sur leur carte. Quand tout est déjà
+   au menu, le dé le dit et ne tire rien.
 3. **Courses** — la liste se calcule automatiquement, en trois présentations :
    *Rayon* (par défaut), *A→Z* avec les ingrédients fusionnés, ou *Recette*. Les cases
    cochées sont conservées, y compris après un changement du nombre de convives.

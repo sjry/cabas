@@ -46,6 +46,10 @@ interface RecipeDao {
     )
     fun observeCandidates(): Flow<List<RecipeCandidate>>
 
+    /** Tout ce que le tirage au sort a besoin de connaître. Sans `ORDER BY` : il n'a pas d'ordre. */
+    @Query("SELECT id FROM recipes")
+    suspend fun allRecipeIds(): List<Long>
+
     @Transaction
     @Query("SELECT * FROM recipes WHERE id = :id")
     fun observeWithDetails(id: Long): Flow<RecipeWithDetails?>
@@ -100,6 +104,10 @@ interface MenuDao {
 
     @Query("SELECT recipeId FROM menu_entries")
     fun observeMenuRecipeIds(): Flow<List<Long>>
+
+    /** Pendant ponctuel de [observeMenuRecipeIds], pour le tirage au sort. */
+    @Query("SELECT recipeId FROM menu_entries")
+    suspend fun menuRecipeIds(): List<Long>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun addEntry(entry: MenuEntryEntity)

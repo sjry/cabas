@@ -32,10 +32,12 @@ app/src/main/java/com/sjarry/cabas/
   parser/    RecipeParser, IngredientUnit, IngredientCategory, QuantityFormatter
              — Kotlin pur, sans Android, testé
   data/      Room (AppDatabase, entities/, dao/), RecipeRepository, MenuRepository,
-             ShoppingListBuilder et RecipeSearch (logique pure), SettingsStore (DataStore)
+             ShoppingListBuilder, RecipeSearch et MenuDraw (logique pure),
+             SettingsStore (DataStore)
   ui/        Navigation.kt + un dossier par écran (recipes, detail, menu, shopping),
              common/ pour les composables et le formatage partagés
-app/src/test/            tests JUnit JVM (parseur, formatage, liste de courses, recherche)
+app/src/test/            tests JUnit JVM (parseur, formatage, liste de courses, recherche,
+                         tirage au sort)
 app/schemas/             schémas Room exportés (3.json) — versionnés, à committer
 exemples/                quatre recettes markdown d'exemple
 ```
@@ -60,8 +62,9 @@ le plugin Android exige 17+. Sans lui, la build échoue immédiatement avec
 
 ## Ce que les tests couvrent — et ne couvrent pas
 
-62 tests JUnit, tous en JVM pure : `RecipeParserTest`, `QuantityFormatterTest`,
-`ShoppingListBuilderTest`, `IngredientCategoryTest`, `RecipeSearchTest`. **Aucun test instrumenté**
+70 tests JUnit, tous en JVM pure : `RecipeParserTest`, `QuantityFormatterTest`,
+`ShoppingListBuilderTest`, `IngredientCategoryTest`, `RecipeSearchTest`, `MenuDrawTest`.
+**Aucun test instrumenté**
 (`app/src/androidTest` n'existe pas, la seule dépendance de test est `junit`).
 `./gradlew connectedAndroidTest` n'a donc rien à exécuter : toute modification
 d'interface se vérifie à la main sur l'émulateur.
@@ -124,6 +127,13 @@ vivre, précisément pour rester testable sans appareil.
   `ShoppingListBuilder.normalizeName` — un seul normaliseur dans l'application, pas deux.
   Les noms d'ingrédients arrivent empaquetés par `GROUP_CONCAT(..., char(31))` : ce séparateur
   et `RecipeSearch.SEPARATOR` doivent rester identiques.
+- **Le tirage au sort du menu ne propose jamais une recette déjà au menu**, et son `Random`
+  est un paramètre de `MenuDraw.draw` : c'est ce qui rend un tirage rejouable dans un test,
+  et c'est pourquoi l'exclusion se fait en Kotlin plutôt que dans la requête. Le dialogue
+  plafonne le compteur au nombre de recettes hors menu (`MenuUiState.availableCount`) : un
+  tirage rend donc toujours le nombre demandé, et il n'y a rien à expliquer après coup.
+  `MenuRepository.addRandomRecipes` relit la base au moment du tirage plutôt que de croire
+  l'état de l'écran, et réutilise `addRecipes` — même convives par défaut que le sélecteur.
 - Le détail d'une recette prend un argument de navigation optionnel `servings`
   (`recipe/{recipeId}?servings=N`, 1 par défaut). Ouvert depuis le **Menu**, il reçoit les
   convives de la carte ; ouvert depuis **Recettes**, il reste à 1 personne.

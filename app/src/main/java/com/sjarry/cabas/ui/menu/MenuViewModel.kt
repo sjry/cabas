@@ -14,6 +14,8 @@ import kotlinx.coroutines.launch
 data class MenuUiState(
     val menu: List<MenuRecipe> = emptyList(),
     val hasRecipes: Boolean = false,
+    /** Recettes importées absentes du menu : ce que le tirage au sort a à sa disposition. */
+    val availableCount: Int = 0,
 ) {
     val isEmpty: Boolean get() = menu.isEmpty()
     val totalRecipes: Int get() = menu.size
@@ -28,8 +30,18 @@ class MenuViewModel(
         menuRepository.observeMenu(),
         recipeRepository.observeRecipes(),
     ) { menu, recipes ->
-        MenuUiState(menu = menu, hasRecipes = recipes.isNotEmpty())
+        val inMenu = menu.mapTo(mutableSetOf()) { it.recipeId }
+        MenuUiState(
+            menu = menu,
+            hasRecipes = recipes.isNotEmpty(),
+            availableCount = recipes.count { it.id !in inMenu },
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MenuUiState())
+
+    /** Ajoute [count] recettes tirées au sort parmi celles qui ne sont pas déjà au menu. */
+    fun drawRandom(count: Int) = viewModelScope.launch {
+        menuRepository.addRandomRecipes(count)
+    }
 
     fun changeServings(recipeId: Long, servings: Int) = viewModelScope.launch {
         menuRepository.setServings(recipeId, servings)

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlin.random.Random
 
 /**
  * Le menu courant : des recettes et, pour chacune, un nombre de convives.
@@ -22,6 +23,7 @@ import kotlinx.coroutines.withContext
 class MenuRepository(private val db: AppDatabase) {
 
     private val menuDao = db.menuDao()
+    private val recipeDao = db.recipeDao()
     private val checkedDao = db.checkedItemDao()
     private val categoryDao = db.ingredientCategoryDao()
 
@@ -54,6 +56,26 @@ class MenuRepository(private val db: AppDatabase) {
             recipeIds.forEachIndexed { index, id ->
                 menuDao.addEntry(MenuEntryEntity(recipeId = id, servings = servings, addedAt = now + index))
             }
+        }
+
+    /**
+     * Tire au sort des recettes hors menu et les ajoute, aux convives par défaut comme celles
+     * venues du sélecteur. La base est relue au moment du tirage plutôt que de faire confiance
+     * à l'état de l'écran : le menu a pu changer entre-temps.
+     *
+     * @return les identifiants réellement ajoutés — moins que [count] si la bibliothèque
+     * n'en avait pas assez hors menu.
+     */
+    suspend fun addRandomRecipes(count: Int, random: Random = Random.Default): List<Long> =
+        withContext(Dispatchers.IO) {
+            val drawn = MenuDraw.draw(
+                allRecipeIds = recipeDao.allRecipeIds(),
+                inMenu = menuDao.menuRecipeIds().toSet(),
+                count = count,
+                random = random,
+            )
+            addRecipes(drawn)
+            drawn
         }
 
     suspend fun setServings(recipeId: Long, servings: Int) = withContext(Dispatchers.IO) {

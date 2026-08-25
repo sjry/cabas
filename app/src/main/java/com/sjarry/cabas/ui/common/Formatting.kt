@@ -21,3 +21,7 @@ fun quantityLabel(
 /** « 4 personnes », « 1 personne ». */
 fun servingsLabel(servings: Int): String =
     if (servings > 1) "$servings personnes" else "$servings personne"
+
+/** « 3 recettes », « 1 recette ». */
+fun recipesLabel(count: Int): String =
+    if (count > 1) "$count recettes" else "$count recette"
