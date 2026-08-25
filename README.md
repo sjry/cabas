@@ -105,10 +105,10 @@ mais une cuillère ne sera jamais convertie en millilitres.
    Pour les soirs sans idée, le bouton **dé** à côté d'*Ajouter* — ou le lien *Ou tirer au
    sort* quand le menu est vide — **tire des recettes au hasard**. On choisit combien :
    le compteur ne dépasse jamais le nombre de recettes hors menu, qu'il affiche, si bien
-   qu'un tirage rend toujours exactement ce qu'on a demandé. Une recette déjà au menu n'est
-   jamais retirée au sort, et les recettes tirées arrivent au nombre de convives par défaut,
-   comme celles venues du sélecteur — à ajuster ensuite sur leur carte. Quand tout est déjà
-   au menu, le dé le dit et ne tire rien.
+   qu'un tirage rend toujours exactement ce qu'on a demandé. Un second compteur donne le
+   **nombre de personnes**, qui s'applique à *toutes* les recettes du tirage — on cuisine pour
+   la même table — et reste ajustable ensuite carte par carte. Une recette déjà au menu n'est
+   jamais retirée au sort. Quand tout est déjà au menu, le dé le dit et ne tire rien.
 
    Chaque carte porte aussi son **propre dé**, qui remplace cette recette-là par une autre,
    tirée au sort, **sans confirmation** : le créneau garde son nombre de convives et sa place

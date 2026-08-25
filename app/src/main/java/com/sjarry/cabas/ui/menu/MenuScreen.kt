@@ -159,8 +159,8 @@ fun MenuScreen(
     if (drawing) {
         DrawDialog(
             availableCount = state.availableCount,
-            onDraw = { count ->
-                viewModel.drawRandom(count)
+            onDraw = { count, servings ->
+                viewModel.drawRandom(count, servings)
                 drawing = false
             },
             onDismiss = { drawing = false },
@@ -186,21 +186,25 @@ fun MenuScreen(
 }
 
 /**
- * Combien de recettes tirer au sort. Le compteur est plafonné au nombre de recettes hors menu,
- * et ce nombre est affiché : c'est ce qui évite un tirage qui rendrait moins que demandé sans
- * rien en dire. « Il n'y a plus rien à tirer » se dit ici aussi, plutôt que par un bouton grisé
- * sans explication.
+ * Combien de recettes tirer au sort, et pour combien de personnes. Le compteur de recettes est
+ * plafonné au nombre de recettes hors menu, et ce nombre est affiché : c'est ce qui évite un
+ * tirage qui rendrait moins que demandé sans rien en dire. « Il n'y a plus rien à tirer » se dit
+ * ici aussi, plutôt que par un bouton grisé sans explication.
+ *
+ * Les convives choisis valent pour **toutes** les recettes tirées : le tirage compose les repas
+ * d'une même table. Ils restent modifiables recette par recette ensuite, sur les cartes du menu.
  */
 @Composable
 private fun DrawDialog(
     availableCount: Int,
-    onDraw: (Int) -> Unit,
+    onDraw: (count: Int, servings: Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
     // Le plafond vient de la base, donc après le premier rendu : on borne à l'affichage plutôt
     // qu'à l'initialisation.
     var requested by remember { mutableIntStateOf(MenuDraw.DEFAULT_COUNT) }
     val count = requested.coerceIn(1, availableCount.coerceAtLeast(1))
+    var servings by remember { mutableIntStateOf(MenuRepository.DEFAULT_SERVINGS) }
     val nothingToDraw = availableCount == 0
 
     AlertDialog(
@@ -211,35 +215,32 @@ private fun DrawDialog(
                 Text("Toutes les recettes importées sont déjà au menu.")
             } else {
                 Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        FilledTonalIconButton(
-                            onClick = { requested = count - 1 },
-                            enabled = count > 1,
-                        ) {
-                            Icon(Icons.Filled.Remove, contentDescription = "Une recette de moins")
-                        }
-                        Text(
-                            text = recipesLabel(count),
-                            style = MaterialTheme.typography.titleMedium,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.weight(1f),
-                        )
-                        FilledTonalIconButton(
-                            onClick = { requested = count + 1 },
-                            enabled = count < availableCount,
-                        ) {
-                            Icon(Icons.Filled.Add, contentDescription = "Une recette de plus")
-                        }
-                    }
-                    Text(
+                    StepperRow(
+                        label = recipesLabel(count),
+                        onDecrement = { requested = count - 1 },
+                        canDecrement = count > 1,
+                        decrementDescription = "Une recette de moins",
+                        onIncrement = { requested = count + 1 },
+                        canIncrement = count < availableCount,
+                        incrementDescription = "Une recette de plus",
+                    )
+                    Caption(
                         text = "${recipesLabel(availableCount)} hors du menu",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 12.dp),
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    StepperRow(
+                        label = servingsLabel(servings),
+                        onDecrement = { servings-- },
+                        canDecrement = servings > MenuRepository.MIN_SERVINGS,
+                        decrementDescription = "Une personne de moins",
+                        onIncrement = { servings++ },
+                        canIncrement = servings < MenuRepository.MAX_SERVINGS,
+                        incrementDescription = "Une personne de plus",
+                        modifier = Modifier.padding(top = 20.dp),
+                    )
+                    Caption(
+                        text = "Pour chaque recette tirée",
+                        modifier = Modifier.padding(top = 8.dp),
                     )
                 }
             }
@@ -248,7 +249,7 @@ private fun DrawDialog(
             if (nothingToDraw) {
                 TextButton(onClick = onDismiss) { Text("Fermer") }
             } else {
-                TextButton(onClick = { onDraw(count) }) { Text("Tirer au sort") }
+                TextButton(onClick = { onDraw(count, servings) }) { Text("Tirer au sort") }
             }
         },
         dismissButton = {
@@ -256,6 +257,49 @@ private fun DrawDialog(
                 TextButton(onClick = onDismiss) { Text("Annuler") }
             }
         },
+    )
+}
+
+/** « − 3 recettes + » : les deux compteurs du dialogue de tirage ont la même forme. */
+@Composable
+private fun StepperRow(
+    label: String,
+    onDecrement: () -> Unit,
+    canDecrement: Boolean,
+    decrementDescription: String,
+    onIncrement: () -> Unit,
+    canIncrement: Boolean,
+    incrementDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FilledTonalIconButton(onClick = onDecrement, enabled = canDecrement) {
+            Icon(Icons.Filled.Remove, contentDescription = decrementDescription)
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f),
+        )
+        FilledTonalIconButton(onClick = onIncrement, enabled = canIncrement) {
+            Icon(Icons.Filled.Add, contentDescription = incrementDescription)
+        }
+    }
+}
+
+/** La ligne d'explication sous un compteur du dialogue de tirage. */
+@Composable
+private fun Caption(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
     )
 }
 

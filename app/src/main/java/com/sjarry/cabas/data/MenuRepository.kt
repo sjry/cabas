@@ -60,14 +60,19 @@ class MenuRepository(private val db: AppDatabase) {
         }
 
     /**
-     * Tire au sort des recettes hors menu et les ajoute, aux convives par défaut comme celles
-     * venues du sélecteur. La base est relue au moment du tirage plutôt que de faire confiance
-     * à l'état de l'écran : le menu a pu changer entre-temps.
+     * Tire au sort des recettes hors menu et les ajoute, toutes pour le même nombre de convives
+     * [servings] : le tirage sert à composer les repas d'une même table. La base est relue au
+     * moment du tirage plutôt que de faire confiance à l'état de l'écran : le menu a pu changer
+     * entre-temps.
      *
      * @return les identifiants réellement ajoutés — moins que [count] si la bibliothèque
      * n'en avait pas assez hors menu.
      */
-    suspend fun addRandomRecipes(count: Int, random: Random = Random.Default): List<Long> =
+    suspend fun addRandomRecipes(
+        count: Int,
+        servings: Int = DEFAULT_SERVINGS,
+        random: Random = Random.Default,
+    ): List<Long> =
         withContext(Dispatchers.IO) {
             val drawn = MenuDraw.draw(
                 allRecipeIds = recipeDao.allRecipeIds(),
@@ -75,7 +80,7 @@ class MenuRepository(private val db: AppDatabase) {
                 count = count,
                 random = random,
             )
-            addRecipes(drawn)
+            addRecipes(drawn, servings.coerceIn(MIN_SERVINGS, MAX_SERVINGS))
             drawn
         }
 

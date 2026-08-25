@@ -133,7 +133,11 @@ vivre, précisément pour rester testable sans appareil.
   plafonne le compteur au nombre de recettes hors menu (`MenuUiState.availableCount`) : un
   tirage rend donc toujours le nombre demandé, et il n'y a rien à expliquer après coup.
   `MenuRepository.addRandomRecipes` relit la base au moment du tirage plutôt que de croire
-  l'état de l'écran, et réutilise `addRecipes` — même convives par défaut que le sélecteur.
+  l'état de l'écran, et réutilise `addRecipes`.
+- **Le nombre de convives du dialogue de tirage vaut pour toutes les recettes tirées** : un
+  tirage compose les repas d'une même table, il n'y a pas de convives par recette à ce
+  moment-là. Il part de `MenuRepository.DEFAULT_SERVINGS` (comme le sélecteur, qui n'en
+  propose pas le choix) et reste ajustable ensuite sur chaque carte.
 - **Remplacer une recette du menu (`swapRecipe`) conserve le créneau** : mêmes `servings`, même
   `addedAt`, donc la carte se réécrit sur place au lieu de sauter en bas de liste — c'est ce qui
   rend l'action lisible sans confirmation. `done` repart à `false` : il décrivait l'autre plat.

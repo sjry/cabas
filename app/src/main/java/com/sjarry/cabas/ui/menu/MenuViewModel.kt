@@ -38,9 +38,12 @@ class MenuViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MenuUiState())
 
-    /** Ajoute [count] recettes tirées au sort parmi celles qui ne sont pas déjà au menu. */
-    fun drawRandom(count: Int) = viewModelScope.launch {
-        menuRepository.addRandomRecipes(count)
+    /**
+     * Ajoute [count] recettes tirées au sort parmi celles qui ne sont pas déjà au menu,
+     * toutes pour [servings] convives.
+     */
+    fun drawRandom(count: Int, servings: Int) = viewModelScope.launch {
+        menuRepository.addRandomRecipes(count, servings)
     }
 
     /** Remplace une recette du menu par une autre, tirée au sort. Sans confirmation : un appui suffit. */
