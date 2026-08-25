@@ -1,5 +1,6 @@
 package com.sjarry.cabas.data
 
+import androidx.room.withTransaction
 import com.sjarry.cabas.data.dao.MenuEntryWithRecipe
 import com.sjarry.cabas.data.entities.CheckedItemEntity
 import com.sjarry.cabas.data.entities.IngredientCategoryEntity
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlin.random.Random
 
 /**
  * Le menu courant : des recettes et, pour chacune, un nombre de convives.
@@ -22,6 +24,7 @@ import kotlinx.coroutines.withContext
 class MenuRepository(private val db: AppDatabase) {
 
     private val menuDao = db.menuDao()
+    private val recipeDao = db.recipeDao()
     private val checkedDao = db.checkedItemDao()
     private val categoryDao = db.ingredientCategoryDao()
 
@@ -54,6 +57,64 @@ class MenuRepository(private val db: AppDatabase) {
             recipeIds.forEachIndexed { index, id ->
                 menuDao.addEntry(MenuEntryEntity(recipeId = id, servings = servings, addedAt = now + index))
             }
+        }
+
+    /**
+     * Tire au sort des recettes hors menu et les ajoute, toutes pour le même nombre de convives
+     * [servings] : le tirage sert à composer les repas d'une même table. La base est relue au
+     * moment du tirage plutôt que de faire confiance à l'état de l'écran : le menu a pu changer
+     * entre-temps.
+     *
+     * @return les identifiants réellement ajoutés — moins que [count] si la bibliothèque
+     * n'en avait pas assez hors menu.
+     */
+    suspend fun addRandomRecipes(
+        count: Int,
+        servings: Int = DEFAULT_SERVINGS,
+        random: Random = Random.Default,
+    ): List<Long> =
+        withContext(Dispatchers.IO) {
+            val drawn = MenuDraw.draw(
+                allRecipeIds = recipeDao.allRecipeIds(),
+                inMenu = menuDao.menuRecipeIds().toSet(),
+                count = count,
+                random = random,
+            )
+            addRecipes(drawn, servings.coerceIn(MIN_SERVINGS, MAX_SERVINGS))
+            drawn
+        }
+
+    /**
+     * Remplace une recette du menu par une autre, tirée au sort hors menu. Le créneau ne bouge
+     * pas : mêmes convives, même place dans la liste — c'est ce qui rend le changement lisible
+     * sans confirmation, la carte se réécrit sous le doigt au lieu de sauter en bas. La case
+     * « faite » repart à zéro, elle parlait de l'autre plat.
+     *
+     * Les deux écritures tiennent dans une transaction, sinon le menu passerait par un état à
+     * une recette de moins et la carte clignoterait.
+     *
+     * @return l'identifiant de la remplaçante, ou null s'il n'y avait rien à tirer.
+     */
+    suspend fun swapRecipe(recipeId: Long, random: Random = Random.Default): Long? =
+        withContext(Dispatchers.IO) {
+            val replacement = db.withTransaction {
+                val slot = menuDao.findEntry(recipeId) ?: return@withTransaction null
+                val drawn = MenuDraw.draw(
+                    allRecipeIds = recipeDao.allRecipeIds(),
+                    inMenu = menuDao.menuRecipeIds().toSet(),
+                    count = 1,
+                    random = random,
+                ).firstOrNull() ?: return@withTransaction null
+
+                menuDao.removeEntry(recipeId)
+                menuDao.addEntry(
+                    MenuEntryEntity(recipeId = drawn, servings = slot.servings, addedAt = slot.addedAt),
+                )
+                drawn
+            }
+            // Hors transaction : la purge relit le menu par son `Flow`.
+            if (replacement != null) pruneCheckedItems()
+            replacement
         }
 
     suspend fun setServings(recipeId: Long, servings: Int) = withContext(Dispatchers.IO) {

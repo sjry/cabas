@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sjarry.cabas.data.MenuRepository
 import com.sjarry.cabas.data.RecipeRepository
-import com.sjarry.cabas.data.entities.RecipeEntity
 import com.sjarry.cabas.data.model.MenuRecipe
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,9 +13,9 @@ import kotlinx.coroutines.launch
 
 data class MenuUiState(
     val menu: List<MenuRecipe> = emptyList(),
-    /** Recettes importées absentes du menu, proposées à l'ajout. */
-    val available: List<RecipeEntity> = emptyList(),
     val hasRecipes: Boolean = false,
+    /** Recettes importées absentes du menu : ce que le tirage au sort a à sa disposition. */
+    val availableCount: Int = 0,
 ) {
     val isEmpty: Boolean get() = menu.isEmpty()
     val totalRecipes: Int get() = menu.size
@@ -30,17 +29,26 @@ class MenuViewModel(
     val uiState: StateFlow<MenuUiState> = combine(
         menuRepository.observeMenu(),
         recipeRepository.observeRecipes(),
-        menuRepository.observeMenuRecipeIds(),
-    ) { menu, recipes, inMenu ->
+    ) { menu, recipes ->
+        val inMenu = menu.mapTo(mutableSetOf()) { it.recipeId }
         MenuUiState(
             menu = menu,
-            available = recipes.filter { it.id !in inMenu },
             hasRecipes = recipes.isNotEmpty(),
+            availableCount = recipes.count { it.id !in inMenu },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MenuUiState())
 
-    fun addRecipes(ids: Set<Long>) = viewModelScope.launch {
-        menuRepository.addRecipes(ids)
+    /**
+     * Ajoute [count] recettes tirées au sort parmi celles qui ne sont pas déjà au menu,
+     * toutes pour [servings] convives.
+     */
+    fun drawRandom(count: Int, servings: Int) = viewModelScope.launch {
+        menuRepository.addRandomRecipes(count, servings)
+    }
+
+    /** Remplace une recette du menu par une autre, tirée au sort. Sans confirmation : un appui suffit. */
+    fun swapRecipe(recipeId: Long) = viewModelScope.launch {
+        menuRepository.swapRecipe(recipeId)
     }
 
     fun changeServings(recipeId: Long, servings: Int) = viewModelScope.launch {

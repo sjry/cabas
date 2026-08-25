@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
+import com.sjarry.cabas.data.RecipeCandidate
 import com.sjarry.cabas.data.entities.CheckedItemEntity
 import com.sjarry.cabas.data.entities.IngredientCategoryEntity
 import com.sjarry.cabas.data.entities.IngredientEntity
@@ -29,6 +30,25 @@ interface RecipeDao {
 
     @Query("SELECT * FROM recipes ORDER BY title COLLATE NOCASE ASC")
     fun observeAll(): Flow<List<RecipeEntity>>
+
+    /**
+     * Le strict nécessaire au sélecteur du menu : de quoi chercher une recette par son titre ou
+     * par un de ses ingrédients, sans charger les étapes ni les quantités.
+     *
+     * Pas d'`ORDER BY` : le tri se fait au collator français dans `RecipeSearch`, `COLLATE NOCASE`
+     * ne couvrant que l'ASCII. `char(31)` est le pendant SQL de `RecipeSearch.SEPARATOR`.
+     */
+    @Query(
+        "SELECT r.id AS id, r.title AS title, " +
+            "IFNULL(GROUP_CONCAT(i.name, char(31)), '') AS ingredientNames " +
+            "FROM recipes r LEFT JOIN ingredients i ON i.recipeId = r.id " +
+            "GROUP BY r.id",
+    )
+    fun observeCandidates(): Flow<List<RecipeCandidate>>
+
+    /** Tout ce que le tirage au sort a besoin de connaître. Sans `ORDER BY` : il n'a pas d'ordre. */
+    @Query("SELECT id FROM recipes")
+    suspend fun allRecipeIds(): List<Long>
 
     @Transaction
     @Query("SELECT * FROM recipes WHERE id = :id")
@@ -84,6 +104,14 @@ interface MenuDao {
 
     @Query("SELECT recipeId FROM menu_entries")
     fun observeMenuRecipeIds(): Flow<List<Long>>
+
+    /** Pendant ponctuel de [observeMenuRecipeIds], pour le tirage au sort. */
+    @Query("SELECT recipeId FROM menu_entries")
+    suspend fun menuRecipeIds(): List<Long>
+
+    /** Le créneau d'une recette : ses convives et sa place, à reprendre lors d'un remplacement. */
+    @Query("SELECT * FROM menu_entries WHERE recipeId = :recipeId")
+    suspend fun findEntry(recipeId: Long): MenuEntryEntity?
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun addEntry(entry: MenuEntryEntity)

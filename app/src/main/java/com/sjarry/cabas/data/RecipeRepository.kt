@@ -50,6 +50,9 @@ class RecipeRepository(
 
     fun observeRecipes(): Flow<List<RecipeEntity>> = recipeDao.observeAll()
 
+    /** Recettes réduites à ce que le sélecteur du menu doit chercher : titre et ingrédients. */
+    fun observeCandidates(): Flow<List<RecipeCandidate>> = recipeDao.observeCandidates()
+
     fun observeRecipe(id: Long): Flow<RecipeWithDetails?> = recipeDao.observeWithDetails(id)
 
     suspend fun deleteRecipe(id: Long) = withContext(Dispatchers.IO) {

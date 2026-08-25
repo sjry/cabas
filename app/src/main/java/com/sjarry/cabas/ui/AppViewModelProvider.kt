@@ -9,6 +9,7 @@ import com.sjarry.cabas.AppContainer
 import com.sjarry.cabas.CabasApplication
 import com.sjarry.cabas.ui.detail.RecipeDetailViewModel
 import com.sjarry.cabas.ui.menu.MenuViewModel
+import com.sjarry.cabas.ui.menu.RecipePickerViewModel
 import com.sjarry.cabas.ui.recipes.RecipesViewModel
 import com.sjarry.cabas.ui.shopping.ShoppingViewModel
 
@@ -18,6 +19,7 @@ object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer { RecipesViewModel(container().recipeRepository, container().settingsStore) }
         initializer { MenuViewModel(container().recipeRepository, container().menuRepository) }
+        initializer { RecipePickerViewModel(container().recipeRepository, container().menuRepository) }
         initializer { ShoppingViewModel(container().menuRepository) }
         initializer { RecipeDetailViewModel(container().recipeRepository, createSavedStateHandle()) }
     }

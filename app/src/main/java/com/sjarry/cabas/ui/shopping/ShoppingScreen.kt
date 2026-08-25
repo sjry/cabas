@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ExpandLess
@@ -132,7 +131,10 @@ fun ShoppingScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 24.dp),
             ) {
-                if (list.isComplete) {
+                // L'écran de fin remplace la liste, sauf en vue par recette : là, les
+                // articles pris restent affichés sous leur recette, y compris quand
+                // tout est coché.
+                if (list.isComplete && view != ShoppingView.BY_RECIPE) {
                     item(key = "complete") {
                         CompletedList(count = list.itemCount, onUncheckAll = viewModel::uncheckAll)
                     }
@@ -166,33 +168,30 @@ fun ShoppingScreen(
                             )
                         }
 
+                        // Ici la question n'est plus « que reste-t-il à prendre » mais
+                        // « qu'est-ce que cette recette demande » : les articles pris
+                        // restent barrés à leur place, sous leur recette.
                         ShoppingView.BY_RECIPE -> list.sections.forEach { section ->
-                            // Une recette dont tout est pris se réduit à une ligne : elle
-                            // reste visible à sa place, sans occuper dix lignes barrées.
-                            if (section.remaining.isEmpty()) {
-                                item(key = "done-${section.recipeId}") {
-                                    CompletedSectionRow(section.title)
-                                }
-                            } else {
-                                item(key = "header-${section.recipeId}") {
-                                    SectionHeader(section.title, section.servings)
-                                }
-                                items(
-                                    items = section.remaining,
-                                    key = { "${section.recipeId}-${it.key}" },
-                                ) { item ->
-                                    ShoppingRow(
-                                        item = item,
-                                        onLongClick = { editing = item },
-                                        onCheckedChange = { checked -> viewModel.toggle(item.key, checked) },
-                                    )
-                                }
+                            item(key = "header-${section.recipeId}") {
+                                SectionHeader(section.title, section.servings)
+                            }
+                            items(
+                                items = section.items,
+                                key = { "${section.recipeId}-${it.key}" },
+                            ) { item ->
+                                ShoppingRow(
+                                    item = item,
+                                    onLongClick = { editing = item },
+                                    onCheckedChange = { checked -> viewModel.toggle(item.key, checked) },
+                                )
                             }
                         }
                     }
                 }
 
-                if (list.taken.isNotEmpty()) {
+                // La vue par recette garde ses articles pris sur place : les reprendre
+                // en bas de liste les afficherait deux fois.
+                if (view != ShoppingView.BY_RECIPE && list.taken.isNotEmpty()) {
                     item(key = "taken-header") {
                         TakenHeader(
                             count = list.taken.size,
@@ -350,37 +349,6 @@ private fun TakenHeader(count: Int, expanded: Boolean, onClick: () -> Unit) {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-/** Vue « Par recette » : la recette entièrement achetée, réduite à une ligne. */
-@Composable
-private fun CompletedSectionRow(title: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(
-            imageVector = Icons.Filled.CheckCircle,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = "complet",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
-        )
     }
 }
 

@@ -23,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.sjarry.cabas.ui.detail.RecipeDetailScreen
 import com.sjarry.cabas.ui.menu.MenuScreen
+import com.sjarry.cabas.ui.menu.RecipePickerScreen
 import com.sjarry.cabas.ui.recipes.RecipesScreen
 import com.sjarry.cabas.ui.shopping.ShoppingScreen
 
@@ -36,6 +37,9 @@ object Routes {
     const val RECIPES = "recipes"
     const val MENU = "menu"
     const val SHOPPING = "shopping"
+
+    /** Sélection des recettes à ajouter au menu : un écran, pas un onglet — la barre du bas s'efface. */
+    const val RECIPE_PICKER = "menu/picker"
     const val RECIPE_DETAIL = "recipe/{$RECIPE_ID_ARG}?$SERVINGS_ARG={$SERVINGS_ARG}"
 
     fun recipeDetail(id: Long, servings: Int = DETAIL_DEFAULT_SERVINGS) = "recipe/$id?$SERVINGS_ARG=$servings"
@@ -83,10 +87,14 @@ fun CabasApp() {
                 MenuScreen(
                     onOpenShoppingList = { navController.switchToTab(Routes.SHOPPING, Routes.MENU) },
                     onGoToRecipes = { navController.switchToTab(Routes.RECIPES, Routes.MENU) },
+                    onAddRecipes = { navController.navigate(Routes.RECIPE_PICKER) },
                     onOpenRecipe = { id, servings ->
                         navController.navigate(Routes.recipeDetail(id, servings))
                     },
                 )
+            }
+            composable(Routes.RECIPE_PICKER) {
+                RecipePickerScreen(onDone = { navController.popBackStack() })
             }
             composable(Routes.SHOPPING) {
                 ShoppingScreen(onGoToMenu = { navController.switchToTab(Routes.MENU, Routes.SHOPPING) })

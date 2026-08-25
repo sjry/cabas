@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Remove
@@ -27,12 +28,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,9 +48,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sjarry.cabas.data.MenuDraw
 import com.sjarry.cabas.data.MenuRepository
 import com.sjarry.cabas.ui.AppViewModelProvider
 import com.sjarry.cabas.ui.common.EmptyState
+import com.sjarry.cabas.ui.common.recipesLabel
 import com.sjarry.cabas.ui.common.servingsLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,12 +60,13 @@ import com.sjarry.cabas.ui.common.servingsLabel
 fun MenuScreen(
     onOpenShoppingList: () -> Unit,
     onGoToRecipes: () -> Unit,
+    onAddRecipes: () -> Unit,
     onOpenRecipe: (recipeId: Long, servings: Int) -> Unit,
     viewModel: MenuViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var showPicker by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+    var drawing by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -92,7 +98,10 @@ fun MenuScreen(
                     title = "Menu vide",
                     message = "Ajoutez des recettes et indiquez pour combien de personnes vous cuisinez.",
                     action = {
-                        Button(onClick = { showPicker = true }) { Text("Ajouter des recettes") }
+                        Button(onClick = onAddRecipes) { Text("Ajouter des recettes") }
+                        // C'est ici que le tirage sert le plus : menu vide, aucune idée de quoi
+                        // cuisiner.
+                        TextButton(onClick = { drawing = true }) { Text("Ou tirer au sort") }
                     },
                 )
 
@@ -109,6 +118,8 @@ fun MenuScreen(
                                 ingredientCount = entry.ingredients.size,
                                 onServingsChange = { viewModel.changeServings(entry.recipeId, it) },
                                 onRemove = { viewModel.removeRecipe(entry.recipeId) },
+                                onSwap = { viewModel.swapRecipe(entry.recipeId) },
+                                canSwap = state.availableCount > 0,
                                 onOpen = { onOpenRecipe(entry.recipeId, entry.servings) },
                                 done = entry.done,
                                 onDoneChange = { viewModel.setDone(entry.recipeId, it) },
@@ -121,13 +132,17 @@ fun MenuScreen(
                             .fillMaxWidth()
                             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         OutlinedButton(
-                            onClick = { showPicker = true },
+                            onClick = onAddRecipes,
                             modifier = Modifier.weight(1f),
                         ) {
                             Icon(Icons.Filled.Add, contentDescription = null)
                             Text("Ajouter", modifier = Modifier.padding(start = 8.dp))
+                        }
+                        OutlinedIconButton(onClick = { drawing = true }) {
+                            Icon(Icons.Filled.Casino, contentDescription = "Tirer des recettes au sort")
                         }
                         Button(
                             onClick = onOpenShoppingList,
@@ -141,14 +156,14 @@ fun MenuScreen(
         }
     }
 
-    if (showPicker) {
-        RecipePickerDialog(
-            available = state.available,
-            onDismiss = { showPicker = false },
-            onConfirm = { ids ->
-                showPicker = false
-                if (ids.isNotEmpty()) viewModel.addRecipes(ids)
+    if (drawing) {
+        DrawDialog(
+            availableCount = state.availableCount,
+            onDraw = { count, servings ->
+                viewModel.drawRandom(count, servings)
+                drawing = false
             },
+            onDismiss = { drawing = false },
         )
     }
 
@@ -170,6 +185,124 @@ fun MenuScreen(
     }
 }
 
+/**
+ * Combien de recettes tirer au sort, et pour combien de personnes. Le compteur de recettes est
+ * plafonné au nombre de recettes hors menu, et ce nombre est affiché : c'est ce qui évite un
+ * tirage qui rendrait moins que demandé sans rien en dire. « Il n'y a plus rien à tirer » se dit
+ * ici aussi, plutôt que par un bouton grisé sans explication.
+ *
+ * Les convives choisis valent pour **toutes** les recettes tirées : le tirage compose les repas
+ * d'une même table. Ils restent modifiables recette par recette ensuite, sur les cartes du menu.
+ */
+@Composable
+private fun DrawDialog(
+    availableCount: Int,
+    onDraw: (count: Int, servings: Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    // Le plafond vient de la base, donc après le premier rendu : on borne à l'affichage plutôt
+    // qu'à l'initialisation.
+    var requested by remember { mutableIntStateOf(MenuDraw.DEFAULT_COUNT) }
+    val count = requested.coerceIn(1, availableCount.coerceAtLeast(1))
+    var servings by remember { mutableIntStateOf(MenuRepository.DEFAULT_SERVINGS) }
+    val nothingToDraw = availableCount == 0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Tirer au sort") },
+        text = {
+            if (nothingToDraw) {
+                Text("Toutes les recettes importées sont déjà au menu.")
+            } else {
+                Column {
+                    StepperRow(
+                        label = recipesLabel(count),
+                        onDecrement = { requested = count - 1 },
+                        canDecrement = count > 1,
+                        decrementDescription = "Une recette de moins",
+                        onIncrement = { requested = count + 1 },
+                        canIncrement = count < availableCount,
+                        incrementDescription = "Une recette de plus",
+                    )
+                    Caption(
+                        text = "${recipesLabel(availableCount)} hors du menu",
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    StepperRow(
+                        label = servingsLabel(servings),
+                        onDecrement = { servings-- },
+                        canDecrement = servings > MenuRepository.MIN_SERVINGS,
+                        decrementDescription = "Une personne de moins",
+                        onIncrement = { servings++ },
+                        canIncrement = servings < MenuRepository.MAX_SERVINGS,
+                        incrementDescription = "Une personne de plus",
+                        modifier = Modifier.padding(top = 20.dp),
+                    )
+                    Caption(
+                        text = "Pour chaque recette tirée",
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (nothingToDraw) {
+                TextButton(onClick = onDismiss) { Text("Fermer") }
+            } else {
+                TextButton(onClick = { onDraw(count, servings) }) { Text("Tirer au sort") }
+            }
+        },
+        dismissButton = {
+            if (!nothingToDraw) {
+                TextButton(onClick = onDismiss) { Text("Annuler") }
+            }
+        },
+    )
+}
+
+/** « − 3 recettes + » : les deux compteurs du dialogue de tirage ont la même forme. */
+@Composable
+private fun StepperRow(
+    label: String,
+    onDecrement: () -> Unit,
+    canDecrement: Boolean,
+    decrementDescription: String,
+    onIncrement: () -> Unit,
+    canIncrement: Boolean,
+    incrementDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FilledTonalIconButton(onClick = onDecrement, enabled = canDecrement) {
+            Icon(Icons.Filled.Remove, contentDescription = decrementDescription)
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f),
+        )
+        FilledTonalIconButton(onClick = onIncrement, enabled = canIncrement) {
+            Icon(Icons.Filled.Add, contentDescription = incrementDescription)
+        }
+    }
+}
+
+/** La ligne d'explication sous un compteur du dialogue de tirage. */
+@Composable
+private fun Caption(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MenuRecipeCard(
@@ -178,6 +311,8 @@ private fun MenuRecipeCard(
     ingredientCount: Int,
     onServingsChange: (Int) -> Unit,
     onRemove: () -> Unit,
+    onSwap: () -> Unit,
+    canSwap: Boolean,
     onOpen: () -> Unit,
     done: Boolean,
     onDoneChange: (Boolean) -> Unit,
@@ -209,6 +344,11 @@ private fun MenuRecipeCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+                // Le remplacement n'a pas de confirmation : désactivé plutôt que muet quand il
+                // n'y a plus rien à tirer, sinon l'appui resterait sans effet ni explication.
+                IconButton(onClick = onSwap, enabled = canSwap) {
+                    Icon(Icons.Filled.Casino, contentDescription = "Remplacer par une recette au hasard")
                 }
                 IconButton(onClick = onRemove) {
                     Icon(Icons.Filled.Close, contentDescription = "Retirer du menu")

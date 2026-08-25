@@ -51,7 +51,11 @@ fun EmptyState(
             modifier = Modifier.padding(top = 8.dp),
         )
         action?.let {
-            Column(modifier = Modifier.padding(top = 24.dp)) { it() }
+            // Centré : un slot peut empiler plusieurs boutons de largeurs différentes.
+            Column(
+                modifier = Modifier.padding(top = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) { it() }
         }
     }
 }
