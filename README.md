@@ -127,12 +127,15 @@ mais une cuillère ne sera jamais convertie en millilitres.
    correction est retenue et vaut pour toutes les recettes, et *Rayon automatique* la
    retire. Un appui court sur la ligne coche l'article.
 
-   Un article coché quitte la liste principale et rejoint la section **Pris (n)**,
-   repliée en bas de l'écran : à l'usage, seul ce qu'il reste à prendre occupe l'écran.
-   La section se déplie d'un appui, et décocher un article le remet dans la liste.
-   En vue *Recette*, une recette dont tout est pris se réduit à une ligne
-   « ✓ *titre* — complet ». Quand plus rien ne reste, la liste est remplacée par
-   **« Tout est dans le cabas »** et un bouton *Tout décocher*.
+   En vue *Rayon* et *A→Z*, un article coché quitte la liste principale et rejoint la
+   section **Pris (n)** en bas de l'écran, dépliée par défaut : ce qu'il reste à prendre
+   passe devant, sans perdre de vue ce qui est déjà dans le cabas. La section se replie
+   d'un appui, et décocher un article le remet dans la liste. Quand plus rien ne reste,
+   la liste est remplacée par **« Tout est dans le cabas »** et un bouton *Tout décocher*.
+
+   La vue *Recette* répond à une autre question — « que demande ce plat ? » — et garde
+   donc chaque ingrédient sous sa recette, simplement barré une fois pris : ni section
+   *Pris*, ni écran de fin, même quand tout est coché.
 
 Tout est stocké localement sur le téléphone (Room / SQLite). Aucune connexion réseau n'est utilisée.
 
@@ -153,21 +156,27 @@ test instrumenté, l'interface se vérifie à la main sur l'émulateur ou un té
 Prérequis : JDK 17 ou 21, `compileSdk 35`, `minSdk 26` (Android 8.0).
 Gradle 8.9 ne fonctionne pas avec un JDK 25 : si Android Studio propose son JBR embarqué,
 choisir plutôt un JDK 21 dans *Settings > Build Tools > Gradle > Gradle JDK*.
-Sur cette machine, le `java` du PATH est un JDK 11 que le plugin Android refuse ; en ligne
-de commande, préfixer les appels Gradle :
+En ligne de commande, si le `java` du PATH est antérieur à 17, le plugin Android refuse de
+se charger (`Android Gradle plugin requires Java 17 to run`) : préfixer alors les appels
+Gradle par le JDK voulu.
 
 ```bash
-JAVA_HOME=~/.jdks/jbr-21.0.11 ./gradlew assembleDebug
+JAVA_HOME=/chemin/vers/jdk-21 ./gradlew assembleDebug
 ```
 
-### Deux réglages liés à la machine
+### Réglages propres au poste
 
-- `local.properties` (non versionné) donne le chemin du SDK Android.
-- `gradle.properties` définit `kotlin.daemon.jvmargs` avec un `org.sqlite.tmpdir`
-  personnalisé. Room vérifie ses requêtes SQL à la compilation via *sqlite-jdbc*,
-  qui extrait une bibliothèque native dans `java.io.tmpdir` ; quand `/tmp` est monté
-  `noexec`, la compilation échoue avec `No native library found for os.name=Linux`.
-  Ce chemin est à adapter sur une autre machine.
+- `local.properties` (non versionné) donne le chemin du SDK Android. Android Studio le crée
+  à l'ouverture du projet ; en ligne de commande, exporter `ANDROID_HOME` suffit.
+- Si la compilation échoue sur `No native library found for os.name=Linux`, c'est que `/tmp`
+  est monté `noexec` : Room vérifie ses requêtes SQL à la compilation via *sqlite-jdbc*, qui
+  a besoin d'extraire une bibliothèque native dans `java.io.tmpdir`. Donner alors un
+  répertoire temporaire exécutable au démon Kotlin, dans `~/.gradle/gradle.properties`
+  plutôt que dans le dépôt — le chemin ne vaut que pour ce poste :
+
+  ```properties
+  kotlin.daemon.jvmargs=-Xmx2048m -Dorg.sqlite.tmpdir=/chemin/exécutable -Djava.io.tmpdir=/chemin/exécutable
+  ```
 
 ### Build release signée
 
@@ -238,11 +247,13 @@ volontaire : mieux vaut un message clair qu'un APK non signé, donc non installa
 
 ### Émulateur
 
-Un AVD `cuisine_pixel6_api35` (Pixel 6, API 35, Google APIs x86_64) est configuré sur cette
-machine. Depuis Android Studio : *Device Manager* puis le bouton ▶. En ligne de commande :
+L'application a été mise au point sur un AVD Pixel 6, API 35, Google APIs x86_64.
+Le créer depuis Android Studio (*Device Manager*), puis le lancer par le bouton ▶ ou en
+ligne de commande :
 
 ```bash
-$ANDROID_HOME/emulator/emulator -avd cuisine_pixel6_api35 &
+$ANDROID_HOME/emulator/emulator -list-avds
+$ANDROID_HOME/emulator/emulator -avd <nom-de-l-avd> &
 ./gradlew installDebug
 ```
 
@@ -262,3 +273,7 @@ la multiplication par le nombre de convives et l'agrégation se font à l'affich
 
 Les conventions de code, les règles de domaine à ne pas casser et la façon de vérifier une
 modification sur l'émulateur sont réunies dans [`AGENTS.md`](AGENTS.md).
+
+## Hello English people
+
+This app is about cooking so obviously this is in French! At this point i don't know if it's worth translating everthing. Or adding an option to change langage. But anyone who wants to do it will be welcome.
