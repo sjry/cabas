@@ -90,6 +90,17 @@ mais une cuillère ne sera jamais convertie en millilitres.
    de courses. Un appui sur la carte ouvre le détail de la recette, dont les quantités
    sont ajustées au nombre de convives choisi (la même recette ouverte depuis l'onglet
    *Recettes* reste affichée pour 1 personne).
+
+   Le bouton *Ajouter* ouvre un écran de sélection pensé pour une grande bibliothèque :
+
+   - une **recherche** sur les titres **et sur les ingrédients** — taper `coco` remonte
+     les recettes au lait de coco, avec en sous-titre l'ingrédient qui les a fait sortir.
+     Plusieurs mots se cumulent (`curry poulet`), les accents et la casse sont ignorés ;
+   - sans recherche, la liste est **jalonnée par initiale** — `Éclair` se range à la
+     lettre *E*, et les titres qui ne commencent pas par une lettre finissent sous `#` ;
+   - une **barre de sélection** en bas retient les recettes cochées sous forme de puces,
+     visibles où qu'on soit dans la liste et retirables d'un appui sur leur croix ;
+   - les recettes déjà au menu n'y figurent pas.
 3. **Courses** — la liste se calcule automatiquement, en trois présentations :
    *Rayon* (par défaut), *A→Z* avec les ingrédients fusionnés, ou *Recette*. Les cases
    cochées sont conservées, y compris après un changement du nombre de convives.

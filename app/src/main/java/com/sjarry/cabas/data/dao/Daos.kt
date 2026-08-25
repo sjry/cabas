@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
+import com.sjarry.cabas.data.RecipeCandidate
 import com.sjarry.cabas.data.entities.CheckedItemEntity
 import com.sjarry.cabas.data.entities.IngredientCategoryEntity
 import com.sjarry.cabas.data.entities.IngredientEntity
@@ -29,6 +30,21 @@ interface RecipeDao {
 
     @Query("SELECT * FROM recipes ORDER BY title COLLATE NOCASE ASC")
     fun observeAll(): Flow<List<RecipeEntity>>
+
+    /**
+     * Le strict nécessaire au sélecteur du menu : de quoi chercher une recette par son titre ou
+     * par un de ses ingrédients, sans charger les étapes ni les quantités.
+     *
+     * Pas d'`ORDER BY` : le tri se fait au collator français dans `RecipeSearch`, `COLLATE NOCASE`
+     * ne couvrant que l'ASCII. `char(31)` est le pendant SQL de `RecipeSearch.SEPARATOR`.
+     */
+    @Query(
+        "SELECT r.id AS id, r.title AS title, " +
+            "IFNULL(GROUP_CONCAT(i.name, char(31)), '') AS ingredientNames " +
+            "FROM recipes r LEFT JOIN ingredients i ON i.recipeId = r.id " +
+            "GROUP BY r.id",
+    )
+    fun observeCandidates(): Flow<List<RecipeCandidate>>
 
     @Transaction
     @Query("SELECT * FROM recipes WHERE id = :id")

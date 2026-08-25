@@ -55,11 +55,11 @@ import com.sjarry.cabas.ui.common.servingsLabel
 fun MenuScreen(
     onOpenShoppingList: () -> Unit,
     onGoToRecipes: () -> Unit,
+    onAddRecipes: () -> Unit,
     onOpenRecipe: (recipeId: Long, servings: Int) -> Unit,
     viewModel: MenuViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var showPicker by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -92,7 +92,7 @@ fun MenuScreen(
                     title = "Menu vide",
                     message = "Ajoutez des recettes et indiquez pour combien de personnes vous cuisinez.",
                     action = {
-                        Button(onClick = { showPicker = true }) { Text("Ajouter des recettes") }
+                        Button(onClick = onAddRecipes) { Text("Ajouter des recettes") }
                     },
                 )
 
@@ -123,7 +123,7 @@ fun MenuScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         OutlinedButton(
-                            onClick = { showPicker = true },
+                            onClick = onAddRecipes,
                             modifier = Modifier.weight(1f),
                         ) {
                             Icon(Icons.Filled.Add, contentDescription = null)
@@ -139,17 +139,6 @@ fun MenuScreen(
                 }
             }
         }
-    }
-
-    if (showPicker) {
-        RecipePickerDialog(
-            available = state.available,
-            onDismiss = { showPicker = false },
-            onConfirm = { ids ->
-                showPicker = false
-                if (ids.isNotEmpty()) viewModel.addRecipes(ids)
-            },
-        )
     }
 
     if (confirmClear) {

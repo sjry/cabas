@@ -32,10 +32,10 @@ app/src/main/java/com/sjarry/cabas/
   parser/    RecipeParser, IngredientUnit, IngredientCategory, QuantityFormatter
              — Kotlin pur, sans Android, testé
   data/      Room (AppDatabase, entities/, dao/), RecipeRepository, MenuRepository,
-             ShoppingListBuilder (logique pure), SettingsStore (DataStore)
+             ShoppingListBuilder et RecipeSearch (logique pure), SettingsStore (DataStore)
   ui/        Navigation.kt + un dossier par écran (recipes, detail, menu, shopping),
              common/ pour les composables et le formatage partagés
-app/src/test/            tests JUnit JVM (parseur, formatage, liste de courses)
+app/src/test/            tests JUnit JVM (parseur, formatage, liste de courses, recherche)
 app/schemas/             schémas Room exportés (3.json) — versionnés, à committer
 exemples/                quatre recettes markdown d'exemple
 ```
@@ -60,8 +60,8 @@ le plugin Android exige 17+. Sans lui, la build échoue immédiatement avec
 
 ## Ce que les tests couvrent — et ne couvrent pas
 
-50 tests JUnit, tous en JVM pure : `RecipeParserTest`, `QuantityFormatterTest`,
-`ShoppingListBuilderTest`, `IngredientCategoryTest`. **Aucun test instrumenté**
+62 tests JUnit, tous en JVM pure : `RecipeParserTest`, `QuantityFormatterTest`,
+`ShoppingListBuilderTest`, `IngredientCategoryTest`, `RecipeSearchTest`. **Aucun test instrumenté**
 (`app/src/androidTest` n'existe pas, la seule dépendance de test est `junit`).
 `./gradlew connectedAndroidTest` n'a donc rien à exécuter : toute modification
 d'interface se vérifie à la main sur l'émulateur.
@@ -113,10 +113,42 @@ vivre, précisément pour rester testable sans appareil.
   **non vide** : un menu vide n'est pas une liste terminée, il n'a rien à acheter — les
   deux cas ont chacun leur écran.
 - Les trois onglets sont frères : tout passage de l'un à l'autre passe par
-  `NavHostController.switchToTab`, jamais par un `navigate` direct.
+  `NavHostController.switchToTab`, jamais par un `navigate` direct. Les autres destinations
+  (`recipe/{id}`, `menu/picker`) s'empilent par un `navigate` normal, et la barre du bas
+  s'efface d'elle-même : `CabasApp` ne l'affiche que si la route courante est un onglet.
+- **Le tri alphabétique des recettes se fait en Kotlin, au `Collator` français à
+  `strength = PRIMARY`**, jamais en SQL. En SQLite, `COLLATE NOCASE` ne couvre que l'ASCII :
+  « Éclair » se retrouverait après « Zucchini ». `RecipeSearch` et `ShoppingListBuilder`
+  trient tous deux ainsi ; `RecipeDao.observeCandidates` ne porte donc pas d'`ORDER BY`.
+- La recherche du sélecteur de menu porte sur le titre **et** les ingrédients, normalisés par
+  `ShoppingListBuilder.normalizeName` — un seul normaliseur dans l'application, pas deux.
+  Les noms d'ingrédients arrivent empaquetés par `GROUP_CONCAT(..., char(31))` : ce séparateur
+  et `RecipeSearch.SEPARATOR` doivent rester identiques.
 - Le détail d'une recette prend un argument de navigation optionnel `servings`
   (`recipe/{recipeId}?servings=N`, 1 par défaut). Ouvert depuis le **Menu**, il reçoit les
   convives de la carte ; ouvert depuis **Recettes**, il reste à 1 personne.
+
+## Pièges d'interface rencontrés
+
+- **`importedAt` est un horodatage de synchronisation, pas de création** : `RecipeRepository.upsert`
+  le réécrit à chaque re-synchro du dossier. Aucune section « recettes récentes » ne peut s'y fier —
+  après un *Re-synchroniser*, toutes les recettes sont « récentes ».
+- **Pas de `Scaffold` dans un `Dialog`.** Un sélecteur plein écran a d'abord été tenté en
+  `Dialog(usePlatformDefaultWidth = false)` : le `Scaffold` imbriqué mesure sa `bottomBar` à la
+  hauteur des seuls encarts système et laisse les boutons déborder *sous* le bord de l'écran, avec
+  ou sans `decorFitsSystemWindows` et `safeDrawingPadding`. Un écran de navigation à part entière
+  (`menu/picker`) règle le problème et donne le geste de retour en prime. Si un jour un plein écran
+  modal est vraiment nécessaire, poser une `Column` avec un `weight(1f)` sur la liste — jamais un
+  `Scaffold`.
+- **Une barre basse sous un champ de saisie ne cumule pas `padding(innerPadding)` et
+  `imePadding()`** : clavier ouvert, on obtient la hauteur de la barre de navigation en vide
+  inutile. Prendre le haut du `Scaffold` (`padding.calculateTopPadding()`) et, en bas,
+  `windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))`, qui vaut déjà le
+  plus grand des deux.
+- Le Gboard de l'AVD `cuisine_pixel6_api35` s'ouvre souvent en **clavier flottant**, qui ne recouvre
+  rien : on ne peut pas y vérifier un encart de clavier. `pm clear
+  com.google.android.inputmethod.latin` le remet ancré, mais fait réapparaître l'écran
+  « Try out your stylus » qu'il faut fermer (*Cancel*) avant de retrouver le champ.
 
 ## Modifier la base
 
@@ -192,6 +224,18 @@ adb push seed.sql /data/local/tmp/seed.sql && adb shell chmod 666 /data/local/tm
 adb shell am force-stop com.sjarry.cabas   # sinon Room réécrit par-dessus depuis son cache
 adb shell 'run-as com.sjarry.cabas sqlite3 databases/cabas.db < /data/local/tmp/seed.sql'
 ```
+
+Pour éprouver un écran de liste à l'échelle visée — le sélecteur de recettes ne devient
+intéressant qu'à partir d'une centaine d'entrées — une CTE récursive suffit à en fabriquer autant :
+
+```sql
+INSERT INTO recipes (title, sourceUri, sourceFileName, rawMarkdown, importedAt)
+WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 150)
+SELECT 'Recette ' || char(65 + (i % 26)) || ' n' || i, NULL, NULL, '# seed', 0 FROM n;
+```
+
+Y ajouter à la main un titre accentué (`Éclair au café`) et un titre non alphabétique
+(`3 chocolats`) : ce sont eux qui révèlent les erreurs de tri et de regroupement.
 
 Le passage par un fichier poussé évite les cauchemars de quoting : `adb shell run-as ...
 "INSERT ..."` fait interpréter les parenthèses et les points-virgules par le shell du
