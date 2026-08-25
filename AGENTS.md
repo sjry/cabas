@@ -134,6 +134,13 @@ vivre, précisément pour rester testable sans appareil.
   tirage rend donc toujours le nombre demandé, et il n'y a rien à expliquer après coup.
   `MenuRepository.addRandomRecipes` relit la base au moment du tirage plutôt que de croire
   l'état de l'écran, et réutilise `addRecipes` — même convives par défaut que le sélecteur.
+- **Remplacer une recette du menu (`swapRecipe`) conserve le créneau** : mêmes `servings`, même
+  `addedAt`, donc la carte se réécrit sur place au lieu de sauter en bas de liste — c'est ce qui
+  rend l'action lisible sans confirmation. `done` repart à `false` : il décrivait l'autre plat.
+  Les deux écritures passent par `db.withTransaction`, sinon le menu émet un état intermédiaire
+  à une recette de moins et la carte clignote. La purge des cases cochées reste **hors**
+  transaction, elle relit le menu par son `Flow`. Le dé d'une carte est désactivé quand
+  `availableCount == 0` : sans confirmation, un appui sans effet serait indéchiffrable.
 - Le détail d'une recette prend un argument de navigation optionnel `servings`
   (`recipe/{recipeId}?servings=N`, 1 par défaut). Ouvert depuis le **Menu**, il reçoit les
   convives de la carte ; ouvert depuis **Recettes**, il reste à 1 personne.

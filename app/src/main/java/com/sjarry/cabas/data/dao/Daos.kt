@@ -109,6 +109,10 @@ interface MenuDao {
     @Query("SELECT recipeId FROM menu_entries")
     suspend fun menuRecipeIds(): List<Long>
 
+    /** Le créneau d'une recette : ses convives et sa place, à reprendre lors d'un remplacement. */
+    @Query("SELECT * FROM menu_entries WHERE recipeId = :recipeId")
+    suspend fun findEntry(recipeId: Long): MenuEntryEntity?
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun addEntry(entry: MenuEntryEntity)
 

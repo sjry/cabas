@@ -43,6 +43,11 @@ class MenuViewModel(
         menuRepository.addRandomRecipes(count)
     }
 
+    /** Remplace une recette du menu par une autre, tirée au sort. Sans confirmation : un appui suffit. */
+    fun swapRecipe(recipeId: Long) = viewModelScope.launch {
+        menuRepository.swapRecipe(recipeId)
+    }
+
     fun changeServings(recipeId: Long, servings: Int) = viewModelScope.launch {
         menuRepository.setServings(recipeId, servings)
     }

@@ -109,6 +109,13 @@ mais une cuillère ne sera jamais convertie en millilitres.
    jamais retirée au sort, et les recettes tirées arrivent au nombre de convives par défaut,
    comme celles venues du sélecteur — à ajuster ensuite sur leur carte. Quand tout est déjà
    au menu, le dé le dit et ne tire rien.
+
+   Chaque carte porte aussi son **propre dé**, qui remplace cette recette-là par une autre,
+   tirée au sort, **sans confirmation** : le créneau garde son nombre de convives et sa place
+   dans la liste, seule la recette change — et la case *faite* repart à zéro, elle parlait de
+   l'autre plat. De quoi relancer une carte qui ne plaît pas, autant de fois qu'il faut. Le dé
+   d'une carte est grisé quand toutes les recettes importées sont déjà au menu : il n'y a plus
+   rien à mettre à la place.
 3. **Courses** — la liste se calcule automatiquement, en trois présentations :
    *Rayon* (par défaut), *A→Z* avec les ingrédients fusionnés, ou *Recette*. Les cases
    cochées sont conservées, y compris après un changement du nombre de convives.

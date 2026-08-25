@@ -1,5 +1,6 @@
 package com.sjarry.cabas.data
 
+import androidx.room.withTransaction
 import com.sjarry.cabas.data.dao.MenuEntryWithRecipe
 import com.sjarry.cabas.data.entities.CheckedItemEntity
 import com.sjarry.cabas.data.entities.IngredientCategoryEntity
@@ -76,6 +77,39 @@ class MenuRepository(private val db: AppDatabase) {
             )
             addRecipes(drawn)
             drawn
+        }
+
+    /**
+     * Remplace une recette du menu par une autre, tirée au sort hors menu. Le créneau ne bouge
+     * pas : mêmes convives, même place dans la liste — c'est ce qui rend le changement lisible
+     * sans confirmation, la carte se réécrit sous le doigt au lieu de sauter en bas. La case
+     * « faite » repart à zéro, elle parlait de l'autre plat.
+     *
+     * Les deux écritures tiennent dans une transaction, sinon le menu passerait par un état à
+     * une recette de moins et la carte clignoterait.
+     *
+     * @return l'identifiant de la remplaçante, ou null s'il n'y avait rien à tirer.
+     */
+    suspend fun swapRecipe(recipeId: Long, random: Random = Random.Default): Long? =
+        withContext(Dispatchers.IO) {
+            val replacement = db.withTransaction {
+                val slot = menuDao.findEntry(recipeId) ?: return@withTransaction null
+                val drawn = MenuDraw.draw(
+                    allRecipeIds = recipeDao.allRecipeIds(),
+                    inMenu = menuDao.menuRecipeIds().toSet(),
+                    count = 1,
+                    random = random,
+                ).firstOrNull() ?: return@withTransaction null
+
+                menuDao.removeEntry(recipeId)
+                menuDao.addEntry(
+                    MenuEntryEntity(recipeId = drawn, servings = slot.servings, addedAt = slot.addedAt),
+                )
+                drawn
+            }
+            // Hors transaction : la purge relit le menu par son `Flow`.
+            if (replacement != null) pruneCheckedItems()
+            replacement
         }
 
     suspend fun setServings(recipeId: Long, servings: Int) = withContext(Dispatchers.IO) {

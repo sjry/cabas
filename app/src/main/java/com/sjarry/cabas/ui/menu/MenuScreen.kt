@@ -118,6 +118,8 @@ fun MenuScreen(
                                 ingredientCount = entry.ingredients.size,
                                 onServingsChange = { viewModel.changeServings(entry.recipeId, it) },
                                 onRemove = { viewModel.removeRecipe(entry.recipeId) },
+                                onSwap = { viewModel.swapRecipe(entry.recipeId) },
+                                canSwap = state.availableCount > 0,
                                 onOpen = { onOpenRecipe(entry.recipeId, entry.servings) },
                                 done = entry.done,
                                 onDoneChange = { viewModel.setDone(entry.recipeId, it) },
@@ -265,6 +267,8 @@ private fun MenuRecipeCard(
     ingredientCount: Int,
     onServingsChange: (Int) -> Unit,
     onRemove: () -> Unit,
+    onSwap: () -> Unit,
+    canSwap: Boolean,
     onOpen: () -> Unit,
     done: Boolean,
     onDoneChange: (Boolean) -> Unit,
@@ -296,6 +300,11 @@ private fun MenuRecipeCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+                // Le remplacement n'a pas de confirmation : désactivé plutôt que muet quand il
+                // n'y a plus rien à tirer, sinon l'appui resterait sans effet ni explication.
+                IconButton(onClick = onSwap, enabled = canSwap) {
+                    Icon(Icons.Filled.Casino, contentDescription = "Remplacer par une recette au hasard")
                 }
                 IconButton(onClick = onRemove) {
                     Icon(Icons.Filled.Close, contentDescription = "Retirer du menu")
