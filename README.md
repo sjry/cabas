@@ -44,7 +44,8 @@ Quatre exemples complets se trouvent dans [`exemples/`](exemples/).
 | **Étapes** | un titre `##` contenant `étape`, `préparation` ou `instruction`, puis une liste numérotée ou à puces |
 
 Les accents et la casse des titres de section n'ont pas d'importance. Toute autre section
-(`## Notes`, `## Astuces`…) est simplement ignorée.
+(`## Notes`, `## Astuces`, `## Vin`…) est **conservée telle quelle**, avec son titre, et
+affichée dans le détail de la recette après les étapes — puces et paragraphes compris.
 
 Catégorie et saison tolèrent la casse, les accents, le pluriel et quelques synonymes (`plat
 principal`, `apéro`, `petit-déjeuner` pour goûter, `toute l'année` pour toutes les saisons…).
@@ -96,6 +97,9 @@ mais une cuillère ne sera jamais convertie en millilitres.
 1. **Recettes** — bouton *Importer* : choisir des fichiers `.md`, synchroniser un dossier
    entier, ou coller du markdown. Un dossier synchronisé est mémorisé : le bouton
    *Re-synchroniser* réimporte les fichiers modifiés et retire ceux qui ont disparu.
+   Après chaque import, un message résume le résultat ; s'il y a eu des erreurs ou des
+   avertissements (ligne d'ingrédient illisible, catégorie ou saison inconnue…), son bouton
+   *Détails* les liste recette par recette.
    Sous le champ de recherche, un compteur donne le **nombre total de recettes**
    importées (« 42 recettes ») et, pendant une recherche, le nombre de résultats
    (« 3 recettes sur 42 »).
@@ -142,7 +146,8 @@ mais une cuillère ne sera jamais convertie en millilitres.
    Un second compteur donne le **nombre de personnes**, qui s'applique à *toutes* les recettes
    du tirage — on cuisine pour la même table — et reste ajustable ensuite carte par carte. Une
    recette déjà au menu n'est jamais retirée au sort. Quand tout est déjà au menu, le dé le dit
-   et ne tire rien.
+   et ne tire rien. La **saison en cours** est cochée d'office quand des recettes la portent ;
+   un appui sur sa puce la retire.
 
    Chaque carte porte aussi son **propre dé**, qui remplace cette recette-là par une autre,
    tirée au sort, **sans confirmation** : le créneau garde son nombre de convives et sa place

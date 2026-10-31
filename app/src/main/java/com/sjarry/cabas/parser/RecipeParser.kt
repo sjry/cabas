@@ -11,6 +11,9 @@ data class ParsedIngredient(
     val rawLine: String = "",
 )
 
+/** Une section du fichier que le parseur ne comprend pas (« Notes », « Astuces »…), conservée telle quelle. */
+data class ParsedSection(val title: String, val lines: List<String>)
+
 /** Résultat du parsing d'un fichier markdown. */
 data class ParsedRecipe(
     val title: String,
@@ -22,13 +25,16 @@ data class ParsedRecipe(
     val steps: List<String>,
     /** Anomalies non bloquantes à afficher après l'import. */
     val warnings: List<String>,
+    /** Les autres sections, dans l'ordre du fichier, pour le détail de la recette. */
+    val notes: List<ParsedSection> = emptyList(),
 )
 
 /**
  * Parseur du format de recette maison : un titre `#`, une section `## Ingrédients`
  * et une section `## Étapes`, avec en option des lignes `Catégorie : …` et `Saison : …` avant
- * la première section. Volontairement tolérant — une ligne mal formée est conservée telle quelle et
- * signalée plutôt que perdue.
+ * la première section. Toute autre section (« Notes », « Astuces »…) est conservée avec son
+ * titre, pour le détail. Volontairement tolérant — une ligne mal formée est conservée telle
+ * quelle et signalée plutôt que perdue.
  */
 object RecipeParser {
 
@@ -70,9 +76,16 @@ object RecipeParser {
         val ingredients = mutableListOf<ParsedIngredient>()
         val steps = mutableListOf<String>()
         val warnings = mutableListOf<String>()
+        val notes = mutableListOf<ParsedSection>()
+        var noteLines: MutableList<String>? = null
 
         for (line in lines) {
-            if (line.isBlank()) continue
+            if (line.isBlank()) {
+                // Dans une section conservée, une ligne vide est un saut de paragraphe ; ailleurs
+                // elle ne dit rien.
+                noteLines?.add("")
+                continue
+            }
 
             val titleMatch = TITLE.find(line)
             if (titleMatch != null) {
@@ -83,7 +96,15 @@ object RecipeParser {
 
             val heading = HEADING.find(line)
             if (heading != null) {
-                section = classify(heading.groupValues[2])
+                val text = heading.groupValues[2].trim()
+                section = classify(text)
+                // Une section inconnue est gardée avec son titre ; un sous-titre `###` à
+                // l'intérieur ouvre simplement une section de plus, c'est assumé.
+                noteLines = if (section == Section.OTHER) {
+                    mutableListOf<String>().also { notes.add(ParsedSection(text, it)) }
+                } else {
+                    null
+                }
                 continue
             }
 
@@ -130,7 +151,10 @@ object RecipeParser {
                     }
                 }
 
-                Section.OTHER -> Unit
+                Section.OTHER -> {
+                    val bullet = BULLET.find(line)?.groupValues?.get(1)
+                    noteLines?.add(if (bullet != null) "• ${bullet.trim()}" else line.trim())
+                }
             }
         }
 
@@ -139,6 +163,9 @@ object RecipeParser {
         }
 
         return ParsedRecipe(
+            notes = notes
+                .map { ParsedSection(it.title, it.lines.dropWhile { l -> l.isEmpty() }.dropLastWhile { l -> l.isEmpty() }) }
+                .filter { it.lines.isNotEmpty() },
             title = title?.takeIf { it.isNotBlank() } ?: fallbackTitle,
             ingredients = ingredients,
             category = category,

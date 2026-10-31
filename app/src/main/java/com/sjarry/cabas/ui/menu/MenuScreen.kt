@@ -210,10 +210,12 @@ private fun DrawDialog(
     onDraw: (count: Int, servings: Int, category: RecipeCategory?, season: Season?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var category by remember { mutableStateOf<RecipeCategory?>(null) }
-    var season by remember { mutableStateOf<Season?>(null) }
     val categories = RecipeCategory.present(candidates.map { it.category })
     val seasons = Season.present(candidates.map { it.seasons })
+    var category by remember { mutableStateOf<RecipeCategory?>(null) }
+    // La saison du jour est proposée d'office — c'est le cas d'usage du filtre — mais seulement
+    // si une puce existe pour elle ; un appui la retire.
+    var season by remember(seasons) { mutableStateOf(Season.current().takeIf { it in seasons }) }
     val eligibleCount = MenuDraw.eligible(candidates, emptySet(), category, setOfNotNull(season)).size
 
     // Le plafond vient de la base et de la sélection, donc après le premier rendu : on borne à

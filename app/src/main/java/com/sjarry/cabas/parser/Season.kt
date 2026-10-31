@@ -1,5 +1,8 @@
 package com.sjarry.cabas.parser
 
+import java.time.LocalDate
+import java.time.MonthDay
+
 /**
  * Saison d'une recette, lue dans la ligne « Saison : … » du markdown. Une recette peut en
  * porter plusieurs (« automne, hiver »). L'ordre de déclaration est celui de l'année : c'est
@@ -48,6 +51,26 @@ enum class Season(val label: String, private val aliases: List<String>) {
             }
             return known to unknown
         }
+
+        /**
+         * La saison d'une date, aux bornes usuelles du calendrier : printemps dès le 20 mars,
+         * été dès le 21 juin, automne dès le 22 septembre, hiver dès le 21 décembre. Les dates
+         * exactes des équinoxes varient d'un jour selon l'année ; en cuisine, le jour près ne
+         * compte pas.
+         */
+        fun of(date: LocalDate): Season {
+            val day = MonthDay.from(date)
+            return when {
+                day < MonthDay.of(3, 20) -> WINTER
+                day < MonthDay.of(6, 21) -> SPRING
+                day < MonthDay.of(9, 22) -> SUMMER
+                day < MonthDay.of(12, 21) -> AUTUMN
+                else -> WINTER
+            }
+        }
+
+        /** La saison du jour, seule source à utiliser pour une présélection. */
+        fun current(): Season = of(LocalDate.now())
 
         /** Les saisons effectivement rencontrées, sans doublon, dans l'ordre de l'année. */
         fun present(values: Iterable<Set<Season>>): List<Season> {

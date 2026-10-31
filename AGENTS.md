@@ -77,9 +77,9 @@ Vérifier avant de conclure à un bug : `java -version` et `echo $ANDROID_HOME`.
 
 ## Ce que les tests couvrent — et ne couvrent pas
 
-108 tests JUnit, tous en JVM pure : `RecipeParserTest`, `RecipeCategoryTest`, `SeasonTest`,
+117 tests JUnit, tous en JVM pure : `RecipeParserTest`, `RecipeCategoryTest`, `SeasonTest`,
 `QuantityFormatterTest`, `ShoppingListBuilderTest`, `IngredientCategoryTest`,
-`RecipeSearchTest`, `MenuDrawTest`.
+`RecipeSearchTest`, `MenuDrawTest`, `ImportReportTest`.
 **Aucun test instrumenté**
 (`app/src/androidTest` n'existe pas, la seule dépendance de test est `junit`).
 `./gradlew connectedAndroidTest` n'a donc rien à exécuter : toute modification
@@ -140,6 +140,20 @@ vivre, précisément pour rester testable sans appareil.
   les puces ne listent que `RecipeCategory.present(...)`, les catégories réellement présentes,
   et une catégorie dont la puce disparaît cesse de filtrer (sinon la liste se vide sans
   explication).
+- **Les sections que le parseur ne comprend pas ne sont pas jetées** : `ParsedRecipe.notes`
+  les garde avec leur titre, puces normalisées en « • » et lignes vides comme sauts de
+  paragraphe. **Elles ne sont pas stockées** : le détail les relit de `rawMarkdown`
+  (`RecipeDetailViewModel`), parce qu'aucune requête ne les concerne, que cela évite une
+  colonne et sa migration, et que les recettes déjà importées les montrent sans re-synchro.
+  Si un jour il faut chercher dedans, ce choix est à revoir.
+- **Un avertissement d'import est un `ImportWarning(recipe, message)`**, jamais une chaîne
+  « Titre — message » recollée : le dialogue de bilan regroupe par recette. Le snackbar n'en
+  donne que le compte et propose *Détails* quand `ImportReport.hasDetails` ; l'écran garde sa
+  propre copie du bilan, le ViewModel l'oubliant dès que le snackbar disparaît.
+- **`Season.of(date)` est la seule source de la saison en cours** (bornes : 20 mars, 21 juin,
+  22 septembre, 21 décembre). Le dialogue de tirage la présélectionne si une puce existe pour
+  elle ; les puces de filtre des écrans, elles, s'ouvrent vides — avec peu de fichiers annotés,
+  une liste filtrée d'office serait incompréhensible.
 - **La saison suit les mêmes règles que la catégorie**, à une différence près : elle est
   **multi-valuée** (`Set<Season>`, ligne `Saison : automne, hiver`, `toutes` = les quatre).
   Colonne `seasons` = noms de l'enum joints par `,`, **`NOT NULL DEFAULT ''`** : Room déduit

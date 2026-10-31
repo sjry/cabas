@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -49,7 +51,7 @@ fun RecipeDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(details?.recipe?.title ?: "Recette") },
+                title = { Text(details?.details?.recipe?.title ?: "Recette") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
@@ -58,7 +60,8 @@ fun RecipeDetailScreen(
             )
         },
     ) { padding ->
-        val recipe = details
+        val recipe = details?.details
+        val notes = details?.notes.orEmpty()
         if (recipe == null) {
             EmptyState(
                 icon = Icons.Filled.Description,
@@ -136,7 +139,32 @@ fun RecipeDetailScreen(
                 }
             }
 
-            if (recipe.ingredients.isEmpty() && recipe.steps.isEmpty()) {
+            // Les sections que le parseur ne comprend pas (« Notes », « Astuces »…), telles
+            // qu'écrites, chacune sous son titre.
+            notes.forEach { section ->
+                item {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                    Text(
+                        section.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    )
+                }
+                items(section.lines) { line ->
+                    if (line.isEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    } else {
+                        Text(
+                            line,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+            }
+
+            if (recipe.ingredients.isEmpty() && recipe.steps.isEmpty() && notes.isEmpty()) {
                 item {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Cette recette ne contient ni ingrédient ni étape reconnus.")

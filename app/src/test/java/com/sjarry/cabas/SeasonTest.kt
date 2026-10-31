@@ -4,6 +4,7 @@ import com.sjarry.cabas.parser.Season
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.time.LocalDate
 
 class SeasonTest {
 
@@ -65,5 +66,18 @@ class SeasonTest {
         assertEquals("Hiver", Season.label(setOf(Season.WINTER)))
         assertEquals("Été, automne", Season.label(setOf(Season.AUTUMN, Season.SUMMER)))
         assertEquals("Toutes saisons", Season.label(Season.entries.toSet()))
+    }
+
+    @Test
+    fun `la saison d une date change aux bornes du calendrier`() {
+        assertEquals(Season.WINTER, Season.of(LocalDate.of(2026, 1, 1)))
+        assertEquals(Season.WINTER, Season.of(LocalDate.of(2026, 3, 19)))
+        assertEquals(Season.SPRING, Season.of(LocalDate.of(2026, 3, 20)))
+        assertEquals(Season.SPRING, Season.of(LocalDate.of(2026, 6, 20)))
+        assertEquals(Season.SUMMER, Season.of(LocalDate.of(2026, 6, 21)))
+        assertEquals(Season.SUMMER, Season.of(LocalDate.of(2026, 9, 21)))
+        assertEquals(Season.AUTUMN, Season.of(LocalDate.of(2026, 9, 22)))
+        assertEquals(Season.AUTUMN, Season.of(LocalDate.of(2026, 12, 20)))
+        assertEquals(Season.WINTER, Season.of(LocalDate.of(2026, 12, 21)))
     }
 }

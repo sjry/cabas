@@ -34,8 +34,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -53,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sjarry.cabas.data.ImportReport
 import com.sjarry.cabas.data.entities.RecipeEntity
 import com.sjarry.cabas.ui.AppViewModelProvider
 import com.sjarry.cabas.ui.common.EmptyState
@@ -76,6 +79,9 @@ fun RecipesScreen(
     var showImportSheet by remember { mutableStateOf(false) }
     var showPasteDialog by remember { mutableStateOf(false) }
     var recipeToDelete by remember { mutableStateOf<RecipeEntity?>(null) }
+    // Le bilan dont on a demandé le détail : copie locale, car le ViewModel oublie le bilan dès
+    // que le snackbar disparaît.
+    var reportDetails by remember { mutableStateOf<ImportReport?>(null) }
 
     val pickFiles = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments(),
@@ -100,7 +106,14 @@ fun RecipesScreen(
 
     LaunchedEffect(report) {
         report?.let {
-            snackbarHostState.showSnackbar(it.summary())
+            // Avec des erreurs ou des avertissements, le snackbar propose d'en lire le détail,
+            // et reste assez longtemps pour qu'on ait le temps de l'ouvrir.
+            val result = snackbarHostState.showSnackbar(
+                message = it.summary(),
+                actionLabel = if (it.hasDetails) "Détails" else null,
+                duration = if (it.hasDetails) SnackbarDuration.Long else SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) reportDetails = it
             viewModel.consumeReport()
         }
     }
@@ -248,6 +261,10 @@ fun RecipesScreen(
                 viewModel.importText(markdown)
             },
         )
+    }
+
+    reportDetails?.let { details ->
+        ImportReportDialog(report = details, onDismiss = { reportDetails = null })
     }
 
     recipeToDelete?.let { recipe ->

@@ -13,15 +13,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
+/** Un avertissement du parseur, rattaché à la recette qu'il concerne. */
+data class ImportWarning(val recipe: String, val message: String)
+
 /** Bilan d'un import, affiché à l'utilisateur juste après l'opération. */
 data class ImportReport(
     val imported: Int = 0,
     val updated: Int = 0,
     val removed: Int = 0,
-    val warnings: List<String> = emptyList(),
+    val warnings: List<ImportWarning> = emptyList(),
     val errors: List<String> = emptyList(),
 ) {
     val touched: Int get() = imported + updated
+
+    /** Vrai s'il y a quelque chose à lire au-delà du résumé : le snackbar propose alors « Détails ». */
+    val hasDetails: Boolean get() = warnings.isNotEmpty() || errors.isNotEmpty()
 
     fun summary(): String {
         if (errors.isNotEmpty() && touched == 0 && removed == 0) {
@@ -71,7 +77,7 @@ class RecipeRepository(
                 report.copy(
                     imported = report.imported + if (created) 1 else 0,
                     updated = report.updated + if (created) 0 else 1,
-                    warnings = report.warnings + parsed.warnings.prefixed(parsed.title),
+                    warnings = report.warnings + parsed.warnings.forRecipe(parsed.title),
                 )
             } catch (e: Exception) {
                 report.copy(errors = report.errors + "Lecture impossible : ${e.message ?: uri.lastPathSegment}")
@@ -88,7 +94,7 @@ class RecipeRepository(
         ImportReport(
             imported = if (created) 1 else 0,
             updated = if (created) 0 else 1,
-            warnings = parsed.warnings.prefixed(parsed.title),
+            warnings = parsed.warnings.forRecipe(parsed.title),
         )
     }
 
@@ -114,7 +120,7 @@ class RecipeRepository(
                 report.copy(
                     imported = report.imported + if (created) 1 else 0,
                     updated = report.updated + if (created) 0 else 1,
-                    warnings = report.warnings + parsed.warnings.prefixed(parsed.title),
+                    warnings = report.warnings + parsed.warnings.forRecipe(parsed.title),
                 )
             } catch (e: Exception) {
                 report.copy(errors = report.errors + "$name : ${e.message ?: "lecture impossible"}")
@@ -210,4 +216,4 @@ private fun String.isMarkdown(): Boolean =
 private fun String.removeMarkdownExtension(): String =
     substringBeforeLast('.').ifBlank { this }
 
-private fun List<String>.prefixed(title: String): List<String> = map { "$title — $it" }
+private fun List<String>.forRecipe(title: String): List<ImportWarning> = map { ImportWarning(title, it) }

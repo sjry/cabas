@@ -2,6 +2,7 @@ package com.sjarry.cabas
 
 import com.sjarry.cabas.parser.IngredientUnit
 import com.sjarry.cabas.parser.RecipeCategory
+import com.sjarry.cabas.parser.ParsedSection
 import com.sjarry.cabas.parser.RecipeParser
 import com.sjarry.cabas.parser.Season
 import org.junit.Assert.assertEquals
@@ -304,5 +305,50 @@ class RecipeParserTest {
             assertEquals(md, setOf(Season.WINTER), recipe.seasons)
             assertTrue(md, recipe.warnings.isEmpty())
         }
+    }
+
+    @Test
+    fun `conserve une section inconnue avec son titre ses puces et ses paragraphes`() {
+        val md = """
+            # Tarte
+
+            ## Ingrédients
+            - 1 oeuf
+
+            ## Notes
+            - Doubler le sucre pour les gourmands.
+            * Se congèle bien.
+
+            Préparée la veille, elle est meilleure.
+
+
+        """.trimIndent()
+
+        val notes = RecipeParser.parse(md).notes
+        assertEquals(
+            listOf(
+                ParsedSection(
+                    "Notes",
+                    listOf("• Doubler le sucre pour les gourmands.", "• Se congèle bien.", "", "Préparée la veille, elle est meilleure."),
+                ),
+            ),
+            notes,
+        )
+    }
+
+    @Test
+    fun `garde les sections inconnues dans l ordre du fichier sans toucher au reste`() {
+        val md = "# T\n## Vin\nUn rouge léger.\n## Ingrédients\n- 1 oeuf\n## Astuces\nServir tiède.\n## Étapes\n1. Cuire."
+        val recipe = RecipeParser.parse(md)
+        assertEquals(listOf("Vin", "Astuces"), recipe.notes.map { it.title })
+        assertEquals(listOf("Un rouge léger."), recipe.notes[0].lines)
+        assertEquals(1, recipe.ingredients.size)
+        assertEquals(listOf("Cuire."), recipe.steps)
+    }
+
+    @Test
+    fun `une recette sans autre section n a pas de notes, et une section vide n en fait pas`() {
+        assertTrue(RecipeParser.parse(sample).notes.isEmpty())
+        assertTrue(RecipeParser.parse("# T\n## Notes\n\n## Ingrédients\n- 1 oeuf").notes.isEmpty())
     }
 }
