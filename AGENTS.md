@@ -66,6 +66,11 @@ arrivent dès la configuration, avant le moindre compilateur :
   `Android Gradle plugin requires Java 17 to run`. Beaucoup de distributions ont encore un
   JDK plus ancien dans le PATH ; Android Studio embarque un JBR utilisable
   (`<install-android-studio>/jbr`), sinon n'importe quel JDK 21.
+- **Trop récent ne va pas non plus** : Gradle 8.9 (celui du wrapper) ne tourne pas sur un
+  JDK au-delà de 22. Le JBR d'Android Studio suit les mises à jour de l'IDE et peut dépasser
+  cette limite ; la build échoue alors dès la configuration sur un message réduit au seul
+  numéro de version (`What went wrong: 25.0.2`), sans autre explication. Android Studio
+  garde souvent un JBR plus ancien dans `~/.jdks/` — en prendre un en 17–21 pour `JAVA_HOME`.
 
 Vérifier avant de conclure à un bug : `java -version` et `echo $ANDROID_HOME`.
 

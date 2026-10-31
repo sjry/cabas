@@ -57,6 +57,7 @@ import com.sjarry.cabas.data.entities.RecipeEntity
 import com.sjarry.cabas.ui.AppViewModelProvider
 import com.sjarry.cabas.ui.common.EmptyState
 import com.sjarry.cabas.ui.common.clickableListItem
+import com.sjarry.cabas.ui.common.recipesLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,6 +123,15 @@ fun RecipesScreen(
                     leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+                // Le total de la bibliothèque, et pendant une recherche le nombre de résultats :
+                // l'utilisateur sait combien de recettes il a sans avoir à faire défiler la liste.
+                Text(
+                    text = if (state.query.isBlank()) recipesLabel(state.recipes.size)
+                    else "${recipesLabel(state.visibleRecipes.size)} sur ${state.recipes.size}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
 

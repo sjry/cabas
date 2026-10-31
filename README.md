@@ -84,6 +84,9 @@ mais une cuillère ne sera jamais convertie en millilitres.
 1. **Recettes** — bouton *Importer* : choisir des fichiers `.md`, synchroniser un dossier
    entier, ou coller du markdown. Un dossier synchronisé est mémorisé : le bouton
    *Re-synchroniser* réimporte les fichiers modifiés et retire ceux qui ont disparu.
+   Sous le champ de recherche, un compteur donne le **nombre total de recettes**
+   importées (« 42 recettes ») et, pendant une recherche, le nombre de résultats
+   (« 3 recettes sur 42 »).
 2. **Menu** — ajouter des recettes et régler le nombre de personnes pour chacune.
    Une case à cocher par recette permet de suivre ce qui a déjà été cuisiné : la recette
    cochée est estompée mais reste dans le menu, et ses ingrédients restent dans la liste
