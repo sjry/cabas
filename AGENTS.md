@@ -33,7 +33,8 @@ et en déduit une liste de courses.
 
 ```
 app/src/main/java/com/sjarry/cabas/
-  parser/    RecipeParser, IngredientUnit, IngredientCategory, QuantityFormatter
+  parser/    RecipeParser, RecipeCategory, Season, IngredientUnit, IngredientCategory,
+             QuantityFormatter
              — Kotlin pur, sans Android, testé
   data/      Room (AppDatabase, entities/, dao/), RecipeRepository, MenuRepository,
              ShoppingListBuilder, RecipeSearch et MenuDraw (logique pure),
@@ -42,7 +43,7 @@ app/src/main/java/com/sjarry/cabas/
              common/ pour les composables et le formatage partagés
 app/src/test/            tests JUnit JVM (parseur, formatage, liste de courses, recherche,
                          tirage au sort)
-app/schemas/             schémas Room exportés (3.json) — versionnés, à committer
+app/schemas/             schémas Room exportés (4.json) — versionnés, à committer
 exemples/                quatre recettes markdown d'exemple
 ```
 
@@ -76,8 +77,9 @@ Vérifier avant de conclure à un bug : `java -version` et `echo $ANDROID_HOME`.
 
 ## Ce que les tests couvrent — et ne couvrent pas
 
-70 tests JUnit, tous en JVM pure : `RecipeParserTest`, `QuantityFormatterTest`,
-`ShoppingListBuilderTest`, `IngredientCategoryTest`, `RecipeSearchTest`, `MenuDrawTest`.
+108 tests JUnit, tous en JVM pure : `RecipeParserTest`, `RecipeCategoryTest`, `SeasonTest`,
+`QuantityFormatterTest`, `ShoppingListBuilderTest`, `IngredientCategoryTest`,
+`RecipeSearchTest`, `MenuDrawTest`.
 **Aucun test instrumenté**
 (`app/src/androidTest` n'existe pas, la seule dépendance de test est `junit`).
 `./gradlew connectedAndroidTest` n'a donc rien à exécuter : toute modification
@@ -123,6 +125,32 @@ vivre, précisément pour rester testable sans appareil.
   cases cochées : elle décrit le magasin, pas les courses en cours.
 - **Le rayon n'entre pas dans `keyOf`.** Corriger un rayon ne doit ni décocher l'article
   ni le dédoubler ; `ShoppingListBuilderTest` garde un test là-dessus.
+- **« Catégorie » désigne deux choses.** Le **rayon** d'un ingrédient (`IngredientCategory`,
+  déduit du nom) et le **type de plat** d'une recette (`RecipeCategory`, lu dans la ligne
+  `Catégorie : …` du markdown). Le champ s'appelle `category` dans les deux cas, le type fait
+  foi — un `grep category` est bruyant, c'est assumé. La catégorie de recette est
+  **facultative** (`null` si le fichier ne la donne pas, et pour tout ce qui a été importé
+  avant le schéma 4, jusqu'à re-synchro : `RecipeDao.updateRecipe` l'écrit, c'est ce qui
+  annote les recettes existantes). Elle n'entre **ni dans `keyOf`, ni dans la liste de
+  courses** ; le tirage au sort, lui, peut s'y restreindre (voir plus bas). Le parseur ne la
+  lit que dans le **préambule** (avant
+  le titre pour un front matter, entre le titre et la première `##` sinon) ; une valeur
+  inconnue donne un avertissement et `null`, jamais une erreur. Le filtre du sélecteur vit
+  dans `RecipeSearch.sections`, celui de l'écran Recettes dans `RecipesUiState.visibleRecipes` ;
+  les puces ne listent que `RecipeCategory.present(...)`, les catégories réellement présentes,
+  et une catégorie dont la puce disparaît cesse de filtrer (sinon la liste se vide sans
+  explication).
+- **La saison suit les mêmes règles que la catégorie**, à une différence près : elle est
+  **multi-valuée** (`Set<Season>`, ligne `Saison : automne, hiver`, `toutes` = les quatre).
+  Colonne `seasons` = noms de l'enum joints par `,`, **`NOT NULL DEFAULT ''`** : Room déduit
+  la nullabilité du type Kotlin, pas du convertisseur, donc un `Set` non nullable impose une
+  colonne non nullable (même schéma que `done`). Le filtre retient une saison à la fois et une
+  recette sans saison ne sort sous aucune puce. Les deux métadonnées se lisent dans la même
+  branche `Section.NONE` du parseur, clé par clé, première occurrence seulement. Les filtres de
+  `RecipesViewModel` sont regroupés dans un `Filters` parce que `combine` n'a pas de surcharge
+  typée au-delà de cinq flux. La rangée de puces est générique (`SingleChoiceChipRow<T>`), le
+  sous-titre commun est `recipeSubtitle` et le message d'état vide `noMatchMessage`, tous deux
+  dans `ui/common/Formatting.kt`.
 - **Les vues « Rayon » et « A→Z » n'affichent que `ShoppingList.remaining`** ; les articles
   cochés partent dans `taken`, section « Pris (n) » repliable en bas de liste — dépliée par
   défaut, état dans le ViewModel, volontairement non persisté comme le choix de vue (qui
@@ -147,11 +175,18 @@ vivre, précisément pour rester testable sans appareil.
   et `RecipeSearch.SEPARATOR` doivent rester identiques.
 - **Le tirage au sort du menu ne propose jamais une recette déjà au menu**, et son `Random`
   est un paramètre de `MenuDraw.draw` : c'est ce qui rend un tirage rejouable dans un test,
-  et c'est pourquoi l'exclusion se fait en Kotlin plutôt que dans la requête. Le dialogue
-  plafonne le compteur au nombre de recettes hors menu (`MenuUiState.availableCount`) : un
-  tirage rend donc toujours le nombre demandé, et il n'y a rien à expliquer après coup.
-  `MenuRepository.addRandomRecipes` relit la base au moment du tirage plutôt que de croire
-  l'état de l'écran, et réutilise `addRecipes`.
+  et c'est pourquoi l'exclusion se fait en Kotlin plutôt que dans la requête, sur une
+  projection `DrawCandidate` (`id`, `category`, `seasons` — `RecipeDao.drawCandidates`).
+  **`MenuDraw.eligible` est l'unique filtre du tirage**, pour le dialogue comme pour le dé
+  d'une carte : une catégorie (null = toutes) et un ensemble de saisons dont il suffit
+  **d'une en commun** (vide = toutes les saisons, recettes sans saison comprises — ce n'est
+  pas « les recettes marquées toutes »). Une recette `Saison : toutes` porte les quatre
+  saisons, elle est donc éligible dès qu'une saison est demandée, sans cas particulier. Le
+  dialogue plafonne le compteur au nombre d'éligibles **dans la sélection** (calculé par la
+  même fonction sur `MenuUiState.candidates`, les recettes hors menu) : un tirage rend donc
+  toujours le nombre demandé, et une combinaison catégorie + saison vide se dit dans le
+  dialogue au lieu de rendre moins. `MenuRepository.addRandomRecipes` relit la base au moment
+  du tirage plutôt que de croire l'état de l'écran, et réutilise `addRecipes`.
 - **Le nombre de convives du dialogue de tirage vaut pour toutes les recettes tirées** : un
   tirage compose les repas d'une même table, il n'y a pas de convives par recette à ce
   moment-là. Il part de `MenuRepository.DEFAULT_SERVINGS` (comme le sélecteur, qui n'en
@@ -161,8 +196,11 @@ vivre, précisément pour rester testable sans appareil.
   rend l'action lisible sans confirmation. `done` repart à `false` : il décrivait l'autre plat.
   Les deux écritures passent par `db.withTransaction`, sinon le menu émet un état intermédiaire
   à une recette de moins et la carte clignote. La purge des cases cochées reste **hors**
-  transaction, elle relit le menu par son `Flow`. Le dé d'une carte est désactivé quand
-  `availableCount == 0` : sans confirmation, un appui sans effet serait indéchiffrable.
+  transaction, elle relit le menu par son `Flow`. La remplaçante est tirée **dans la même
+  catégorie et avec une saison en commun** (ce que la recette remplacée ne précise pas n'est
+  pas exigé). Le dé d'une carte est désactivé quand rien ne répond à ces conditions
+  (`MenuUiState.swappableIds`, calculé dans le ViewModel par `MenuDraw.eligible`) : sans
+  confirmation, un appui sans effet serait indéchiffrable.
 - Le détail d'une recette prend un argument de navigation optionnel `servings`
   (`recipe/{recipeId}?servings=N`, 1 par défaut). Ouvert depuis le **Menu**, il reçoit les
   convives de la carte ; ouvert depuis **Recettes**, il reste à 1 personne.
@@ -191,7 +229,7 @@ vivre, précisément pour rester testable sans appareil.
 
 ## Modifier la base
 
-`AppDatabase` est en `version = 3`, `exportSchema = true`. Un changement de schéma impose
+`AppDatabase` est en `version = 4`, `exportSchema = true`. Un changement de schéma impose
 de monter la version, d'ajouter une `Migration` (voir `MIGRATION_1_2`) et de committer le
 nouveau JSON de `app/schemas/`. `fallbackToDestructiveMigration()` est actif : une migration
 oubliée efface silencieusement les données de l'utilisateur au lieu de planter.
@@ -274,6 +312,13 @@ INSERT INTO recipes (title, sourceUri, sourceFileName, rawMarkdown, importedAt)
 WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 150)
 SELECT 'Recette ' || char(65 + (i % 26)) || ' n' || i, NULL, NULL, '# seed', 0 FROM n;
 ```
+
+La colonne `category` des recettes stocke le **nom de l'enum** (`'DESSERT'`, pas « Dessert »),
+`NULL` sans catégorie ; `seasons` les noms joints par une virgule (`'SUMMER,AUTUMN'`), `''`
+sans saison. Pour voir les puces de filtre, en semer quelques-unes :
+`UPDATE recipes SET category = CASE id % 4 WHEN 0 THEN 'STARTER' WHEN 1 THEN 'MAIN' WHEN 2
+THEN 'DESSERT' END, seasons = CASE id % 3 WHEN 0 THEN 'SUMMER' WHEN 1 THEN 'AUTUMN,WINTER'
+ELSE '' END;`
 
 Y ajouter à la main un titre accentué (`Éclair au café`) et un titre non alphabétique
 (`3 chocolats`) : ce sont eux qui révèlent les erreurs de tri et de regroupement.

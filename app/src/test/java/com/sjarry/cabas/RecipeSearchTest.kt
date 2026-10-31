@@ -3,6 +3,8 @@ package com.sjarry.cabas
 import com.sjarry.cabas.data.RecipeCandidate
 import com.sjarry.cabas.data.RecipeSearch
 import com.sjarry.cabas.data.ingredients
+import com.sjarry.cabas.parser.RecipeCategory
+import com.sjarry.cabas.parser.Season
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -10,13 +12,24 @@ import org.junit.Test
 
 class RecipeSearchTest {
 
-    private fun candidate(id: Long, title: String, vararg ingredients: String) =
-        RecipeCandidate(id, title, ingredients.joinToString(RecipeSearch.SEPARATOR))
+    private fun candidate(
+        id: Long,
+        title: String,
+        vararg ingredients: String,
+        category: RecipeCategory? = null,
+        seasons: Set<Season> = emptySet(),
+    ) = RecipeCandidate(id, title, ingredients.joinToString(RecipeSearch.SEPARATOR), category, seasons)
 
-    private val curry = candidate(1, "Poulet au curry", "riz basmati", "lait de coco", "curry")
-    private val eclair = candidate(2, "Éclair au café", "pâte à choux", "café")
-    private val chocolats = candidate(3, "3 chocolats", "chocolat noir", "crème")
-    private val gratin = candidate(4, "Gratin de courgettes", "courgette", "crème")
+    private val curry = candidate(
+        1, "Poulet au curry", "riz basmati", "lait de coco", "curry",
+        category = RecipeCategory.MAIN, seasons = setOf(Season.WINTER),
+    )
+    private val eclair = candidate(
+        2, "Éclair au café", "pâte à choux", "café",
+        category = RecipeCategory.DESSERT, seasons = setOf(Season.SPRING, Season.SUMMER),
+    )
+    private val chocolats = candidate(3, "3 chocolats", "chocolat noir", "crème", category = RecipeCategory.DESSERT)
+    private val gratin = candidate(4, "Gratin de courgettes", "courgette", "crème", seasons = setOf(Season.SUMMER))
 
     private val all = listOf(curry, eclair, chocolats, gratin)
 
@@ -107,5 +120,54 @@ class RecipeSearchTest {
             RecipeSearch.sections(all, emptySet(), "").map { it.header },
             RecipeSearch.sections(all, emptySet(), "   ").map { it.header },
         )
+    }
+
+    @Test
+    fun `le filtre de categorie ne garde que ses recettes, toujours jalonnees`() {
+        val sections = RecipeSearch.sections(all, emptySet(), "", RecipeCategory.DESSERT)
+        assertEquals(listOf("E", "#"), sections.map { it.header })
+        assertEquals(
+            listOf("Éclair au café", "3 chocolats"),
+            sections.flatMap { it.matches }.map { it.title },
+        )
+    }
+
+    @Test
+    fun `le filtre de categorie se cumule avec la recherche`() {
+        val matches = RecipeSearch.sections(all, emptySet(), "crème", RecipeCategory.DESSERT)
+            .flatMap { it.matches }
+        assertEquals(listOf("3 chocolats"), matches.map { it.title })
+    }
+
+    @Test
+    fun `sans filtre les recettes sans categorie restent visibles et chaque correspondance porte la sienne`() {
+        val matches = RecipeSearch.sections(all, emptySet(), "").flatMap { it.matches }
+        assertEquals(4, matches.size)
+        assertNull(matches.first { it.title == "Gratin de courgettes" }.category)
+        assertEquals(RecipeCategory.MAIN, matches.first { it.title == "Poulet au curry" }.category)
+    }
+
+    @Test
+    fun `le filtre de saison retient les recettes qui la comptent parmi les leurs`() {
+        val titles = RecipeSearch.sections(all, emptySet(), "", season = Season.SUMMER)
+            .flatMap { it.matches }.map { it.title }
+        assertEquals(listOf("Éclair au café", "Gratin de courgettes"), titles)
+    }
+
+    @Test
+    fun `saison categorie et recherche se cumulent`() {
+        val titles = RecipeSearch.sections(all, emptySet(), "crème", RecipeCategory.DESSERT, Season.SUMMER)
+            .flatMap { it.matches }.map { it.title }
+        assertEquals(emptyList<String>(), titles)
+        val summerDesserts = RecipeSearch.sections(all, emptySet(), "", RecipeCategory.DESSERT, Season.SUMMER)
+            .flatMap { it.matches }.map { it.title }
+        assertEquals(listOf("Éclair au café"), summerDesserts)
+    }
+
+    @Test
+    fun `chaque correspondance porte ses saisons`() {
+        val matches = RecipeSearch.sections(all, emptySet(), "").flatMap { it.matches }
+        assertEquals(setOf(Season.WINTER), matches.first { it.title == "Poulet au curry" }.seasons)
+        assertEquals(emptySet<Season>(), matches.first { it.title == "3 chocolats" }.seasons)
     }
 }

@@ -27,7 +27,7 @@ import com.sjarry.cabas.data.entities.StepEntity
         CheckedItemEntity::class,
         IngredientCategoryEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -56,6 +56,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Type de plat et saisons, lus dans le fichier. Null pour les recettes déjà importées,
+         * jusqu'à leur prochaine re-synchro : leur markdown d'alors ne portait pas ces lignes.
+         */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE recipes ADD COLUMN category TEXT")
+                db.execSQL("ALTER TABLE recipes ADD COLUMN seasons TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -65,7 +76,7 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 "cabas.db",
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigration()
                 .build()
                 .also { instance = it }

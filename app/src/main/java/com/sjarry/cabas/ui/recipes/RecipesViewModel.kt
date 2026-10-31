@@ -7,31 +7,62 @@ import com.sjarry.cabas.data.ImportReport
 import com.sjarry.cabas.data.RecipeRepository
 import com.sjarry.cabas.data.SettingsStore
 import com.sjarry.cabas.data.entities.RecipeEntity
+import com.sjarry.cabas.parser.RecipeCategory
+import com.sjarry.cabas.parser.Season
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class RecipesUiState(
     val recipes: List<RecipeEntity> = emptyList(),
     val query: String = "",
+    /** Catégorie filtrée, toujours parmi [categories] ; null sans filtre. */
+    val category: RecipeCategory? = null,
+    /** Saison filtrée, toujours parmi [seasons] ; null sans filtre. */
+    val season: Season? = null,
     val folderUri: String? = null,
     val isBusy: Boolean = false,
 ) {
+    /** Les catégories présentes dans la bibliothèque : les seules puces qui rendraient quelque chose. */
+    val categories: List<RecipeCategory>
+        get() = RecipeCategory.present(recipes.map { it.category })
+
+    /** Même principe pour les saisons. */
+    val seasons: List<Season>
+        get() = Season.present(recipes.map { it.seasons })
+
+    val isFiltering: Boolean
+        get() = query.isNotBlank() || category != null || season != null
+
     val visibleRecipes: List<RecipeEntity>
-        get() = if (query.isBlank()) recipes
-        else recipes.filter { it.title.contains(query.trim(), ignoreCase = true) }
+        get() = recipes.filter {
+            (category == null || it.category == category) &&
+                (season == null || season in it.seasons) &&
+                (query.isBlank() || it.title.contains(query.trim(), ignoreCase = true))
+        }
 }
+
+/**
+ * Les trois filtres de l'écran dans un seul flux : `combine` n'a pas de surcharge typée
+ * au-delà de cinq flux, et recettes, dossier et import en occupent déjà trois.
+ */
+private data class Filters(
+    val query: String = "",
+    val category: RecipeCategory? = null,
+    val season: Season? = null,
+)
 
 class RecipesViewModel(
     private val repository: RecipeRepository,
     private val settings: SettingsStore,
 ) : ViewModel() {
 
-    private val query = MutableStateFlow("")
+    private val filters = MutableStateFlow(Filters())
     private val busy = MutableStateFlow(false)
 
     /** Dernier bilan d'import, consommé par l'écran pour afficher un message. */
@@ -40,20 +71,31 @@ class RecipesViewModel(
 
     val uiState: StateFlow<RecipesUiState> = combine(
         repository.observeRecipes(),
-        query,
+        filters,
         settings.folderUri,
         busy,
-    ) { recipes, q, folder, isBusy ->
-        RecipesUiState(recipes = recipes, query = q, folderUri = folder, isBusy = isBusy)
+    ) { recipes, f, folder, isBusy ->
+        RecipesUiState(
+            recipes = recipes,
+            query = f.query,
+            // Un filtre dont la dernière recette vient d'être supprimée n'a plus de puce :
+            // il s'éteint avec elle plutôt que de laisser une liste vide inexplicable.
+            category = f.category?.takeIf { c -> recipes.any { it.category == c } },
+            season = f.season?.takeIf { s -> recipes.any { s in it.seasons } },
+            folderUri = folder,
+            isBusy = isBusy,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = RecipesUiState(),
     )
 
-    fun onQueryChange(value: String) {
-        query.value = value
-    }
+    fun onQueryChange(value: String) = filters.update { it.copy(query = value) }
+
+    fun onCategoryChange(value: RecipeCategory?) = filters.update { it.copy(category = value) }
+
+    fun onSeasonChange(value: Season?) = filters.update { it.copy(season = value) }
 
     fun importFiles(uris: List<Uri>) = runImport { repository.importFromUris(uris) }
 

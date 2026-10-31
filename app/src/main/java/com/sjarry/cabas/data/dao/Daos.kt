@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
+import com.sjarry.cabas.data.DrawCandidate
 import com.sjarry.cabas.data.RecipeCandidate
 import com.sjarry.cabas.data.entities.CheckedItemEntity
 import com.sjarry.cabas.data.entities.IngredientCategoryEntity
@@ -14,6 +15,8 @@ import com.sjarry.cabas.data.entities.IngredientEntity
 import com.sjarry.cabas.data.entities.MenuEntryEntity
 import com.sjarry.cabas.data.entities.RecipeEntity
 import com.sjarry.cabas.data.entities.StepEntity
+import com.sjarry.cabas.parser.RecipeCategory
+import com.sjarry.cabas.parser.Season
 import kotlinx.coroutines.flow.Flow
 
 /** Une recette avec ses ingrédients et ses étapes. */
@@ -39,7 +42,7 @@ interface RecipeDao {
      * ne couvrant que l'ASCII. `char(31)` est le pendant SQL de `RecipeSearch.SEPARATOR`.
      */
     @Query(
-        "SELECT r.id AS id, r.title AS title, " +
+        "SELECT r.id AS id, r.title AS title, r.category AS category, r.seasons AS seasons, " +
             "IFNULL(GROUP_CONCAT(i.name, char(31)), '') AS ingredientNames " +
             "FROM recipes r LEFT JOIN ingredients i ON i.recipeId = r.id " +
             "GROUP BY r.id",
@@ -47,8 +50,8 @@ interface RecipeDao {
     fun observeCandidates(): Flow<List<RecipeCandidate>>
 
     /** Tout ce que le tirage au sort a besoin de connaître. Sans `ORDER BY` : il n'a pas d'ordre. */
-    @Query("SELECT id FROM recipes")
-    suspend fun allRecipeIds(): List<Long>
+    @Query("SELECT id, category, seasons FROM recipes")
+    suspend fun drawCandidates(): List<DrawCandidate>
 
     @Transaction
     @Query("SELECT * FROM recipes WHERE id = :id")
@@ -66,8 +69,20 @@ interface RecipeDao {
     @Insert
     suspend fun insertRecipe(recipe: RecipeEntity): Long
 
-    @Query("UPDATE recipes SET title = :title, rawMarkdown = :markdown, sourceFileName = :fileName, importedAt = :importedAt WHERE id = :id")
-    suspend fun updateRecipe(id: Long, title: String, markdown: String, fileName: String?, importedAt: Long)
+    /** Catégorie et saisons en font partie : c'est la re-synchro qui annote les recettes déjà importées. */
+    @Query(
+        "UPDATE recipes SET title = :title, rawMarkdown = :markdown, sourceFileName = :fileName, " +
+            "importedAt = :importedAt, category = :category, seasons = :seasons WHERE id = :id",
+    )
+    suspend fun updateRecipe(
+        id: Long,
+        title: String,
+        markdown: String,
+        fileName: String?,
+        importedAt: Long,
+        category: RecipeCategory?,
+        seasons: Set<Season>,
+    )
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertIngredients(items: List<IngredientEntity>)

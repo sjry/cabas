@@ -1,4 +1,6 @@
 # Salade de tomates
+Catégorie : entrée
+Saison : été
 
 ## Ingrédients
 - 2 tomates

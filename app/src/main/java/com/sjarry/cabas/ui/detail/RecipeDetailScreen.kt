@@ -32,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sjarry.cabas.ui.AppViewModelProvider
 import com.sjarry.cabas.ui.common.EmptyState
 import com.sjarry.cabas.ui.common.quantityLabel
+import com.sjarry.cabas.ui.common.recipeTags
 import com.sjarry.cabas.ui.common.servingsLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,6 +73,17 @@ fun RecipeDetailScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 24.dp),
         ) {
+            recipeTags(recipe.recipe.category, recipe.recipe.seasons)?.let { tags ->
+                item {
+                    Text(
+                        tags,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                    )
+                }
+            }
+
             item {
                 Text(
                     "Ingrédients — pour ${servingsLabel(servings)}",

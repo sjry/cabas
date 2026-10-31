@@ -6,6 +6,8 @@ import com.sjarry.cabas.data.entities.CheckedItemEntity
 import com.sjarry.cabas.data.entities.IngredientCategoryEntity
 import com.sjarry.cabas.data.entities.MenuEntryEntity
 import com.sjarry.cabas.data.model.MenuRecipe
+import com.sjarry.cabas.parser.RecipeCategory
+import com.sjarry.cabas.parser.Season
 import com.sjarry.cabas.data.model.ShoppingList
 import com.sjarry.cabas.parser.IngredientCategory
 import com.sjarry.cabas.parser.ParsedIngredient
@@ -63,7 +65,8 @@ class MenuRepository(private val db: AppDatabase) {
      * Tire au sort des recettes hors menu et les ajoute, toutes pour le même nombre de convives
      * [servings] : le tirage sert à composer les repas d'une même table. La base est relue au
      * moment du tirage plutôt que de faire confiance à l'état de l'écran : le menu a pu changer
-     * entre-temps.
+     * entre-temps. [category] et [seasons] contraignent le tirage comme dans [MenuDraw.eligible] ;
+     * null et ensemble vide ne contraignent rien.
      *
      * @return les identifiants réellement ajoutés — moins que [count] si la bibliothèque
      * n'en avait pas assez hors menu.
@@ -71,22 +74,27 @@ class MenuRepository(private val db: AppDatabase) {
     suspend fun addRandomRecipes(
         count: Int,
         servings: Int = DEFAULT_SERVINGS,
+        category: RecipeCategory? = null,
+        seasons: Set<Season> = emptySet(),
         random: Random = Random.Default,
     ): List<Long> =
         withContext(Dispatchers.IO) {
             val drawn = MenuDraw.draw(
-                allRecipeIds = recipeDao.allRecipeIds(),
+                candidates = recipeDao.drawCandidates(),
                 inMenu = menuDao.menuRecipeIds().toSet(),
                 count = count,
                 random = random,
+                category = category,
+                seasons = seasons,
             )
             addRecipes(drawn, servings.coerceIn(MIN_SERVINGS, MAX_SERVINGS))
             drawn
         }
 
     /**
-     * Remplace une recette du menu par une autre, tirée au sort hors menu. Le créneau ne bouge
-     * pas : mêmes convives, même place dans la liste — c'est ce qui rend le changement lisible
+     * Remplace une recette du menu par une autre, tirée au sort hors menu **dans la même
+     * catégorie et partageant une saison** avec elle (rien n'est exigé sur ce que la recette
+     * remplacée ne précise pas). Le créneau ne bouge pas : mêmes convives, même place dans la liste — c'est ce qui rend le changement lisible
      * sans confirmation, la carte se réécrit sous le doigt au lieu de sauter en bas. La case
      * « faite » repart à zéro, elle parlait de l'autre plat.
      *
@@ -99,11 +107,15 @@ class MenuRepository(private val db: AppDatabase) {
         withContext(Dispatchers.IO) {
             val replacement = db.withTransaction {
                 val slot = menuDao.findEntry(recipeId) ?: return@withTransaction null
+                val all = recipeDao.drawCandidates()
+                val replaced = all.firstOrNull { it.id == recipeId }
                 val drawn = MenuDraw.draw(
-                    allRecipeIds = recipeDao.allRecipeIds(),
+                    candidates = all,
                     inMenu = menuDao.menuRecipeIds().toSet(),
                     count = 1,
                     random = random,
+                    category = replaced?.category,
+                    seasons = replaced?.seasons ?: emptySet(),
                 ).firstOrNull() ?: return@withTransaction null
 
                 menuDao.removeEntry(recipeId)
@@ -184,6 +196,8 @@ private fun MenuEntryWithRecipe.toMenuRecipe(): MenuRecipe = MenuRecipe(
     title = recipe.recipe.title,
     servings = entry.servings,
     done = entry.done,
+    category = recipe.recipe.category,
+    seasons = recipe.recipe.seasons,
     ingredients = recipe.ingredients
         .sortedBy { it.position }
         .map {

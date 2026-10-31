@@ -3,6 +3,8 @@ package com.sjarry.cabas.data.model
 import com.sjarry.cabas.parser.IngredientCategory
 import com.sjarry.cabas.parser.IngredientUnit
 import com.sjarry.cabas.parser.ParsedIngredient
+import com.sjarry.cabas.parser.RecipeCategory
+import com.sjarry.cabas.parser.Season
 
 /** Une recette du menu avec son nombre de convives. */
 data class MenuRecipe(
@@ -13,6 +15,8 @@ data class MenuRecipe(
     val ingredients: List<ParsedIngredient>,
     /** Recette déjà cuisinée. N'influe pas sur la liste de courses. */
     val done: Boolean = false,
+    val category: RecipeCategory? = null,
+    val seasons: Set<Season> = emptySet(),
 )
 
 /** Une ligne de la liste de courses. */

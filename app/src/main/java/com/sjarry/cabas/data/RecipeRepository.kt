@@ -156,12 +156,14 @@ class RecipeRepository(
                     sourceFileName = fileName,
                     rawMarkdown = rawMarkdown,
                     importedAt = now,
+                    category = parsed.category,
+                    seasons = parsed.seasons,
                 ),
             )
             created = true
         } else {
             recipeId = existing.id
-            recipeDao.updateRecipe(recipeId, parsed.title, rawMarkdown, fileName, now)
+            recipeDao.updateRecipe(recipeId, parsed.title, rawMarkdown, fileName, now, parsed.category, parsed.seasons)
             recipeDao.deleteIngredientsOf(recipeId)
             recipeDao.deleteStepsOf(recipeId)
             created = false

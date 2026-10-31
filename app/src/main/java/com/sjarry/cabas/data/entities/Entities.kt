@@ -6,6 +6,8 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.sjarry.cabas.parser.IngredientCategory
 import com.sjarry.cabas.parser.IngredientUnit
+import com.sjarry.cabas.parser.RecipeCategory
+import com.sjarry.cabas.parser.Season
 
 /** Une recette importée. Les quantités qu'elle porte sont toujours pour 1 personne. */
 @Entity(tableName = "recipes", indices = [Index(value = ["sourceUri"], unique = true)])
@@ -17,6 +19,13 @@ data class RecipeEntity(
     val sourceFileName: String? = null,
     val rawMarkdown: String,
     val importedAt: Long,
+    /**
+     * Type de plat lu dans le markdown. Null si le fichier ne le dit pas, et pour toute recette
+     * importée avant la version 4 du schéma tant qu'elle n'a pas été re-synchronisée.
+     */
+    val category: RecipeCategory? = null,
+    /** Saisons lues dans le markdown ; vide dans les mêmes cas que [category]. */
+    val seasons: Set<Season> = emptySet(),
 )
 
 @Entity(

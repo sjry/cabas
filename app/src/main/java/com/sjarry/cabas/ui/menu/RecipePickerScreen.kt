@@ -51,7 +51,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sjarry.cabas.data.RecipeSearch
 import com.sjarry.cabas.ui.AppViewModelProvider
 import com.sjarry.cabas.ui.common.EmptyState
+import com.sjarry.cabas.ui.common.SingleChoiceChipRow
 import com.sjarry.cabas.ui.common.clickableListItem
+import com.sjarry.cabas.ui.common.noMatchMessage
+import com.sjarry.cabas.ui.common.recipeSubtitle
 
 /**
  * Sélection des recettes à ajouter au menu. La liste peut compter des centaines de recettes : il
@@ -109,6 +112,24 @@ fun RecipePickerScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
+                    if (state.categories.isNotEmpty()) {
+                        SingleChoiceChipRow(
+                            items = state.categories,
+                            selected = state.category,
+                            label = { it.label },
+                            onSelect = viewModel::onCategoryChange,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
+                    if (state.seasons.isNotEmpty()) {
+                        SingleChoiceChipRow(
+                            items = state.seasons,
+                            selected = state.season,
+                            label = { it.label },
+                            onSelect = viewModel::onSeasonChange,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
                 }
             }
         },
@@ -134,8 +155,7 @@ fun RecipePickerScreen(
                     state.sections.isEmpty() -> EmptyState(
                         icon = Icons.Filled.Search,
                         title = "Aucun résultat",
-                        message = "Aucune recette ne correspond à « ${state.query} », " +
-                            "ni par son titre ni par ses ingrédients.",
+                        message = noMatchMessage(state.query, state.category, state.season, byIngredients = true),
                     )
 
                     else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -204,8 +224,12 @@ private fun MatchRow(
             Text(
                 // Quand c'est un ingrédient qui a fait remonter la recette, le dire : sans ça, un
                 // résultat dont le titre ne contient pas la saisie paraît arbitraire.
-                text = match.matchedIngredient?.let { "Ingrédient : $it" }
-                    ?: "${match.ingredientCount} ingrédient(s)",
+                text = recipeSubtitle(
+                    match.category,
+                    match.seasons,
+                    match.matchedIngredient?.let { "Ingrédient : $it" }
+                        ?: "${match.ingredientCount} ingrédient(s)",
+                ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

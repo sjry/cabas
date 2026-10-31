@@ -56,7 +56,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sjarry.cabas.data.entities.RecipeEntity
 import com.sjarry.cabas.ui.AppViewModelProvider
 import com.sjarry.cabas.ui.common.EmptyState
+import com.sjarry.cabas.ui.common.SingleChoiceChipRow
 import com.sjarry.cabas.ui.common.clickableListItem
+import com.sjarry.cabas.ui.common.noMatchMessage
+import com.sjarry.cabas.ui.common.recipeSubtitle
 import com.sjarry.cabas.ui.common.recipesLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,10 +127,27 @@ fun RecipesScreen(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 )
-                // Le total de la bibliothèque, et pendant une recherche le nombre de résultats :
+                if (state.categories.isNotEmpty()) {
+                    SingleChoiceChipRow(
+                        items = state.categories,
+                        selected = state.category,
+                        label = { it.label },
+                        onSelect = viewModel::onCategoryChange,
+                    )
+                }
+                if (state.seasons.isNotEmpty()) {
+                    SingleChoiceChipRow(
+                        items = state.seasons,
+                        selected = state.season,
+                        label = { it.label },
+                        onSelect = viewModel::onSeasonChange,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+                // Le total de la bibliothèque, et pendant un filtrage le nombre de résultats :
                 // l'utilisateur sait combien de recettes il a sans avoir à faire défiler la liste.
                 Text(
-                    text = if (state.query.isBlank()) recipesLabel(state.recipes.size)
+                    text = if (!state.isFiltering) recipesLabel(state.recipes.size)
                     else "${recipesLabel(state.visibleRecipes.size)} sur ${state.recipes.size}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -157,7 +177,7 @@ fun RecipesScreen(
                 state.visibleRecipes.isEmpty() -> EmptyState(
                     icon = Icons.Filled.Search,
                     title = "Aucun résultat",
-                    message = "Aucune recette ne correspond à « ${state.query} ».",
+                    message = noMatchMessage(state.query, state.category, state.season),
                 )
 
                 else -> LazyColumn(contentPadding = PaddingValues(bottom = 96.dp)) {
@@ -166,7 +186,7 @@ fun RecipesScreen(
                             headlineContent = { Text(recipe.title) },
                             supportingContent = {
                                 Text(
-                                    text = recipe.sourceFileName ?: "Recette collée",
+                                    text = recipeSubtitle(recipe.category, recipe.seasons, recipe.sourceFileName ?: "Recette collée"),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )

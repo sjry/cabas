@@ -15,6 +15,10 @@ data class ParsedIngredient(
 data class ParsedRecipe(
     val title: String,
     val ingredients: List<ParsedIngredient>,
+    /** Type de plat, absent si le fichier ne le dit pas. */
+    val category: RecipeCategory? = null,
+    /** Saisons de la recette, vide si le fichier ne le dit pas. */
+    val seasons: Set<Season> = emptySet(),
     val steps: List<String>,
     /** Anomalies non bloquantes à afficher après l'import. */
     val warnings: List<String>,
@@ -22,8 +26,9 @@ data class ParsedRecipe(
 
 /**
  * Parseur du format de recette maison : un titre `#`, une section `## Ingrédients`
- * et une section `## Étapes`. Volontairement tolérant — une ligne mal formée est
- * conservée telle quelle et signalée plutôt que perdue.
+ * et une section `## Étapes`, avec en option des lignes `Catégorie : …` et `Saison : …` avant
+ * la première section. Volontairement tolérant — une ligne mal formée est conservée telle quelle et
+ * signalée plutôt que perdue.
  */
 object RecipeParser {
 
@@ -31,6 +36,12 @@ object RecipeParser {
     private val HEADING = Regex("""^\s{0,3}(#{2,6})\s+(.*\S)\s*$""")
     private val BULLET = Regex("""^\s*[-*+]\s+(.*\S)\s*$""")
     private val NUMBERED = Regex("""^\s*\d+\s*[.)]\s+(.*\S)\s*$""")
+
+    /**
+     * Ligne `clé : valeur` du préambule, valeur non vide. Une puce ou un titre n'en est pas une,
+     * ni les `---` d'un front matter YAML (Obsidian), qui n'ont pas de `:` : ils sont ignorés.
+     */
+    private val METADATA = Regex("""^\s{0,3}([^:#\-*+][^:]*?)\s*:\s*(.*\S)\s*$""")
 
     /** Quantité en tête de ligne : entier, décimal (`1.5`/`1,5`), fraction (`1/2`, `1 1/2`). */
     private val QUANTITY = Regex("""^\s*(\d+\s+\d+\s*/\s*\d+|\d+\s*/\s*\d+|\d+(?:[.,]\d+)?)\s*""")
@@ -51,6 +62,10 @@ object RecipeParser {
         val lines = markdown.replace("\r\n", "\n").replace("\r", "\n").split("\n")
 
         var title: String? = null
+        var category: RecipeCategory? = null
+        var categorySeen = false
+        var seasons: Set<Season> = emptySet()
+        var seasonsSeen = false
         var section = Section.NONE
         val ingredients = mutableListOf<ParsedIngredient>()
         val steps = mutableListOf<String>()
@@ -90,7 +105,32 @@ object RecipeParser {
                     if (body.isNotBlank()) steps.add(body.trim())
                 }
 
-                Section.NONE, Section.OTHER -> Unit
+                // Le préambule — avant le titre pour un front matter, entre le titre et la
+                // première section sinon — est le seul endroit où une métadonnée est lue.
+                // Toute autre ligne y est ignorée en silence, comme avant : le format n'a
+                // jamais interdit une phrase d'introduction.
+                // Seule la première occurrence d'une clé compte, comme pour le titre.
+                Section.NONE -> {
+                    val meta = METADATA.find(line) ?: continue
+                    val key = meta.groupValues[1].deaccent().lowercase().trim()
+                    val value = meta.groupValues[2].trim()
+                    when (key) {
+                        "categorie", "category" -> if (!categorySeen) {
+                            categorySeen = true
+                            category = RecipeCategory.parse(value)
+                            if (category == null) warnings.add("Catégorie inconnue : « $value »")
+                        }
+
+                        "saison", "saisons", "season" -> if (!seasonsSeen) {
+                            seasonsSeen = true
+                            val (known, unknown) = Season.parseList(value)
+                            seasons = known
+                            unknown.forEach { warnings.add("Saison inconnue : « $it »") }
+                        }
+                    }
+                }
+
+                Section.OTHER -> Unit
             }
         }
 
@@ -101,6 +141,8 @@ object RecipeParser {
         return ParsedRecipe(
             title = title?.takeIf { it.isNotBlank() } ?: fallbackTitle,
             ingredients = ingredients,
+            category = category,
+            seasons = seasons,
             steps = steps,
             warnings = warnings,
         )

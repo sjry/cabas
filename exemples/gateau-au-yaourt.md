@@ -1,4 +1,6 @@
 # Gâteau au yaourt
+Catégorie : dessert
+Saison : toutes
 
 ## Ingrédients
 - 60 g de farine

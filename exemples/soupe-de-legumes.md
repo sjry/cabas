@@ -1,4 +1,6 @@
 # Soupe de légumes
+Catégorie : entrée
+Saison : automne, hiver
 
 ## Ingrédients
 - 0,25 kg de pommes de terre

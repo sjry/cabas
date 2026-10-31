@@ -1,5 +1,7 @@
 package com.sjarry.cabas.data
 
+import com.sjarry.cabas.parser.RecipeCategory
+import com.sjarry.cabas.parser.Season
 import com.sjarry.cabas.parser.deaccent
 import java.text.Collator
 import java.util.Locale
@@ -10,6 +12,8 @@ data class RecipeCandidate(
     val title: String,
     /** Noms des ingrédients joints par [RecipeSearch.SEPARATOR], tels que les rend `GROUP_CONCAT`. */
     val ingredientNames: String,
+    val category: RecipeCategory? = null,
+    val seasons: Set<Season> = emptySet(),
 )
 
 /**
@@ -20,8 +24,9 @@ fun RecipeCandidate.ingredients(): List<String> =
     if (ingredientNames.isEmpty()) emptyList() else ingredientNames.split(RecipeSearch.SEPARATOR)
 
 /**
- * Prépare la liste du sélecteur de recettes : écarte ce qui est déjà au menu, filtre sur la
- * saisie — titre **et** ingrédients — puis jalonne le résultat.
+ * Prépare la liste du sélecteur de recettes : écarte ce qui est déjà au menu, retient la
+ * catégorie et la saison demandées s'il y en a, filtre sur la saisie — titre **et** ingrédients — puis
+ * jalonne le résultat.
  *
  * Sans recherche, la liste est découpée par initiale ; avec une recherche, elle est classée par
  * pertinence et n'a plus d'initiales à afficher.
@@ -56,17 +61,28 @@ object RecipeSearch {
          * présence. Null quand le titre suffisait.
          */
         val matchedIngredient: String? = null,
+        val category: RecipeCategory? = null,
+        val seasons: Set<Season> = emptySet(),
     )
 
     /** Une tranche de la liste. [header] est null pendant une recherche : plus d'alphabet à jalonner. */
     data class Section(val header: String?, val matches: List<Match>)
 
+    /**
+     * @param category si non null, seules les recettes de cette catégorie sont retenues.
+     * @param season si non null, seules les recettes qui comptent cette saison parmi les leurs.
+     */
     fun sections(
         candidates: List<RecipeCandidate>,
         inMenu: Set<Long>,
         query: String,
+        category: RecipeCategory? = null,
+        season: Season? = null,
     ): List<Section> {
-        val available = candidates.filterNot { it.id in inMenu }
+        val available = candidates
+            .filterNot { it.id in inMenu }
+            .filter { category == null || it.category == category }
+            .filter { season == null || season in it.seasons }
         val tokens = tokenize(query)
         return if (tokens.isEmpty()) grouped(available) else ranked(available, tokens)
     }
@@ -74,7 +90,7 @@ object RecipeSearch {
     /** Sans recherche : une section par initiale, dans l'ordre, « # » en dernier. */
     private fun grouped(available: List<RecipeCandidate>): List<Section> {
         val byInitial = available
-            .map { Match(it.id, it.title, it.ingredients().size) }
+            .map { Match(it.id, it.title, it.ingredients().size, category = it.category, seasons = it.seasons) }
             .sortedWith { a, b -> collator.compare(a.title, b.title) }
             .groupBy { initialOf(it.title) }
 
@@ -112,7 +128,10 @@ object RecipeSearch {
                 title.startsWith(tokens.first()) -> 0
                 else -> 1
             }
-            rank to Match(candidate.id, candidate.title, ingredients.size, fromIngredient)
+            rank to Match(
+                candidate.id, candidate.title, ingredients.size, fromIngredient,
+                candidate.category, candidate.seasons,
+            )
         }
 
         if (scored.isEmpty()) return emptyList()

@@ -1,4 +1,5 @@
 # Poulet au curry
+Catégorie : plat
 
 ## Ingrédients
 - 150 g riz basmati

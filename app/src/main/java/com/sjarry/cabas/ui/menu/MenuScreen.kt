@@ -48,10 +48,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sjarry.cabas.data.DrawCandidate
 import com.sjarry.cabas.data.MenuDraw
 import com.sjarry.cabas.data.MenuRepository
+import com.sjarry.cabas.parser.RecipeCategory
+import com.sjarry.cabas.parser.Season
 import com.sjarry.cabas.ui.AppViewModelProvider
+import com.sjarry.cabas.ui.common.recipeSubtitle
 import com.sjarry.cabas.ui.common.EmptyState
+import com.sjarry.cabas.ui.common.SingleChoiceChipRow
 import com.sjarry.cabas.ui.common.recipesLabel
 import com.sjarry.cabas.ui.common.servingsLabel
 
@@ -114,12 +119,14 @@ fun MenuScreen(
                         items(state.menu, key = { it.recipeId }) { entry ->
                             MenuRecipeCard(
                                 title = entry.title,
+                                category = entry.category,
+                                seasons = entry.seasons,
                                 servings = entry.servings,
                                 ingredientCount = entry.ingredients.size,
                                 onServingsChange = { viewModel.changeServings(entry.recipeId, it) },
                                 onRemove = { viewModel.removeRecipe(entry.recipeId) },
                                 onSwap = { viewModel.swapRecipe(entry.recipeId) },
-                                canSwap = state.availableCount > 0,
+                                canSwap = entry.recipeId in state.swappableIds,
                                 onOpen = { onOpenRecipe(entry.recipeId, entry.servings) },
                                 done = entry.done,
                                 onDoneChange = { viewModel.setDone(entry.recipeId, it) },
@@ -158,9 +165,9 @@ fun MenuScreen(
 
     if (drawing) {
         DrawDialog(
-            availableCount = state.availableCount,
-            onDraw = { count, servings ->
-                viewModel.drawRandom(count, servings)
+            candidates = state.candidates,
+            onDraw = { count, servings, category, season ->
+                viewModel.drawRandom(count, servings, category, season)
                 drawing = false
             },
             onDismiss = { drawing = false },
@@ -186,26 +193,36 @@ fun MenuScreen(
 }
 
 /**
- * Combien de recettes tirer au sort, et pour combien de personnes. Le compteur de recettes est
- * plafonné au nombre de recettes hors menu, et ce nombre est affiché : c'est ce qui évite un
- * tirage qui rendrait moins que demandé sans rien en dire. « Il n'y a plus rien à tirer » se dit
- * ici aussi, plutôt que par un bouton grisé sans explication.
+ * Combien de recettes tirer au sort, dans quelle catégorie et quelle saison, et pour combien de
+ * personnes. Les puces ne proposent que les catégories et saisons présentes hors menu ; sans
+ * choix, tout est tiré — toutes les saisons, recettes sans saison comprises. Le compteur de
+ * recettes est plafonné au nombre de recettes hors menu **dans la sélection**, et ce nombre est
+ * affiché : c'est ce qui évite un tirage qui rendrait moins que demandé sans rien en dire. « Il
+ * n'y a plus rien à tirer » se dit ici aussi, plutôt que par un bouton grisé sans explication —
+ * y compris pour une combinaison catégorie + saison qui ne donne rien.
  *
  * Les convives choisis valent pour **toutes** les recettes tirées : le tirage compose les repas
  * d'une même table. Ils restent modifiables recette par recette ensuite, sur les cartes du menu.
  */
 @Composable
 private fun DrawDialog(
-    availableCount: Int,
-    onDraw: (count: Int, servings: Int) -> Unit,
+    candidates: List<DrawCandidate>,
+    onDraw: (count: Int, servings: Int, category: RecipeCategory?, season: Season?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // Le plafond vient de la base, donc après le premier rendu : on borne à l'affichage plutôt
-    // qu'à l'initialisation.
+    var category by remember { mutableStateOf<RecipeCategory?>(null) }
+    var season by remember { mutableStateOf<Season?>(null) }
+    val categories = RecipeCategory.present(candidates.map { it.category })
+    val seasons = Season.present(candidates.map { it.seasons })
+    val eligibleCount = MenuDraw.eligible(candidates, emptySet(), category, setOfNotNull(season)).size
+
+    // Le plafond vient de la base et de la sélection, donc après le premier rendu : on borne à
+    // l'affichage plutôt qu'à l'initialisation.
     var requested by remember { mutableIntStateOf(MenuDraw.DEFAULT_COUNT) }
-    val count = requested.coerceIn(1, availableCount.coerceAtLeast(1))
+    val count = requested.coerceIn(1, eligibleCount.coerceAtLeast(1))
     var servings by remember { mutableIntStateOf(MenuRepository.DEFAULT_SERVINGS) }
-    val nothingToDraw = availableCount == 0
+    val nothingToDraw = candidates.isEmpty()
+    val canDraw = eligibleCount > 0
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -215,17 +232,43 @@ private fun DrawDialog(
                 Text("Toutes les recettes importées sont déjà au menu.")
             } else {
                 Column {
+                    if (categories.isNotEmpty()) {
+                        SingleChoiceChipRow(
+                            items = categories,
+                            selected = category,
+                            label = { it.label },
+                            onSelect = { category = it },
+                            contentPadding = PaddingValues(0.dp),
+                        )
+                    }
+                    if (seasons.isNotEmpty()) {
+                        SingleChoiceChipRow(
+                            items = seasons,
+                            selected = season,
+                            label = { it.label },
+                            onSelect = { season = it },
+                            modifier = Modifier.padding(top = 8.dp),
+                            contentPadding = PaddingValues(0.dp),
+                        )
+                    }
+                    if (categories.isNotEmpty() || seasons.isNotEmpty()) {
+                        Caption(
+                            text = "Sans choix, toutes les catégories et toutes les saisons",
+                            modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
+                        )
+                    }
                     StepperRow(
                         label = recipesLabel(count),
                         onDecrement = { requested = count - 1 },
-                        canDecrement = count > 1,
+                        canDecrement = canDraw && count > 1,
                         decrementDescription = "Une recette de moins",
                         onIncrement = { requested = count + 1 },
-                        canIncrement = count < availableCount,
+                        canIncrement = canDraw && count < eligibleCount,
                         incrementDescription = "Une recette de plus",
                     )
                     Caption(
-                        text = "${recipesLabel(availableCount)} hors du menu",
+                        text = if (canDraw) "${recipesLabel(eligibleCount)} hors du menu"
+                        else "Aucune recette hors du menu dans cette sélection",
                         modifier = Modifier.padding(top = 8.dp),
                     )
                     StepperRow(
@@ -249,7 +292,9 @@ private fun DrawDialog(
             if (nothingToDraw) {
                 TextButton(onClick = onDismiss) { Text("Fermer") }
             } else {
-                TextButton(onClick = { onDraw(count, servings) }) { Text("Tirer au sort") }
+                TextButton(onClick = { onDraw(count, servings, category, season) }, enabled = canDraw) {
+                    Text("Tirer au sort")
+                }
             }
         },
         dismissButton = {
@@ -307,6 +352,8 @@ private fun Caption(text: String, modifier: Modifier = Modifier) {
 @Composable
 private fun MenuRecipeCard(
     title: String,
+    category: RecipeCategory?,
+    seasons: Set<Season>,
     servings: Int,
     ingredientCount: Int,
     onServingsChange: (Int) -> Unit,
@@ -340,7 +387,7 @@ private fun MenuRecipeCard(
                 ) {
                     Text(title, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "$ingredientCount ingrédient(s)",
+                        recipeSubtitle(category, seasons, "$ingredientCount ingrédient(s)"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

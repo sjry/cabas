@@ -1,9 +1,12 @@
 package com.sjarry.cabas
 
 import com.sjarry.cabas.parser.IngredientUnit
+import com.sjarry.cabas.parser.RecipeCategory
 import com.sjarry.cabas.parser.RecipeParser
+import com.sjarry.cabas.parser.Season
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -193,5 +196,113 @@ class RecipeParserTest {
     fun `ignore la mention optionnel`() {
         val ing = RecipeParser.parseIngredient("1 gousse d'ail (optionnel)")
         assertEquals("ail", ing!!.name)
+    }
+
+    @Test
+    fun `lit la categorie sous le titre`() {
+        val recipe = RecipeParser.parse("# Tarte\n\nCatégorie : dessert\n\n## Ingrédients\n- 1 oeuf")
+        assertEquals(RecipeCategory.DESSERT, recipe.category)
+        assertEquals("Tarte", recipe.title)
+        assertEquals(1, recipe.ingredients.size)
+        assertTrue(recipe.warnings.isEmpty())
+    }
+
+    @Test
+    fun `la categorie tolere accents casse et espaces autour des deux-points`() {
+        for (line in listOf("categorie: Dessert", "CATÉGORIE :dessert", "Catégorie : dessert", "category: dessert")) {
+            val recipe = RecipeParser.parse("# T\n$line\n## Ingrédients\n- 1 oeuf")
+            assertEquals(line, RecipeCategory.DESSERT, recipe.category)
+        }
+    }
+
+    @Test
+    fun `tolere un bloc front matter`() {
+        val md = """
+            ---
+            categorie: plat
+            tags: [rapide, hiver]
+            ---
+            # Gratin
+
+            ## Ingrédients
+            - 1 oeuf
+        """.trimIndent()
+
+        val recipe = RecipeParser.parse(md)
+        assertEquals(RecipeCategory.MAIN, recipe.category)
+        assertEquals("Gratin", recipe.title)
+        assertTrue(recipe.warnings.isEmpty())
+    }
+
+    @Test
+    fun `signale une categorie inconnue sans la bloquer`() {
+        val recipe = RecipeParser.parse("# T\nCatégorie : xyz\n## Ingrédients\n- 1 oeuf")
+        assertNull(recipe.category)
+        assertEquals(listOf("Catégorie inconnue : « xyz »"), recipe.warnings)
+        assertEquals(1, recipe.ingredients.size)
+    }
+
+    @Test
+    fun `une recette sans categorie n en a pas et ne s en plaint pas`() {
+        val recipe = RecipeParser.parse(sample)
+        assertNull(recipe.category)
+        assertTrue(recipe.warnings.isEmpty())
+    }
+
+    @Test
+    fun `la categorie n est lue que dans le preambule`() {
+        val recipe = RecipeParser.parse("# T\n## Notes\nCatégorie : dessert\n## Ingrédients\n- 1 oeuf")
+        assertNull(recipe.category)
+        assertTrue(recipe.warnings.isEmpty())
+    }
+
+    @Test
+    fun `seule la premiere categorie compte`() {
+        val recipe = RecipeParser.parse("# T\nCatégorie : entrée\nCatégorie : dessert\n## Ingrédients\n- 1 oeuf")
+        assertEquals(RecipeCategory.STARTER, recipe.category)
+    }
+
+    @Test
+    fun `lit une saison sous le titre`() {
+        val recipe = RecipeParser.parse("# T\nSaison : été\n## Ingrédients\n- 1 oeuf")
+        assertEquals(setOf(Season.SUMMER), recipe.seasons)
+        assertTrue(recipe.warnings.isEmpty())
+    }
+
+    @Test
+    fun `lit plusieurs saisons et toutes`() {
+        assertEquals(
+            setOf(Season.AUTUMN, Season.WINTER),
+            RecipeParser.parse("# T\nSaison : automne, hiver\n## Ingrédients\n- 1 oeuf").seasons,
+        )
+        assertEquals(
+            Season.entries.toSet(),
+            RecipeParser.parse("# T\nSaisons : toutes\n## Ingrédients\n- 1 oeuf").seasons,
+        )
+    }
+
+    @Test
+    fun `une saison inconnue est signalee sans perdre les autres`() {
+        val recipe = RecipeParser.parse("# T\nSaison : hiver, xyz\n## Ingrédients\n- 1 oeuf")
+        assertEquals(setOf(Season.WINTER), recipe.seasons)
+        assertEquals(listOf("Saison inconnue : « xyz »"), recipe.warnings)
+    }
+
+    @Test
+    fun `une recette sans saison n en a pas`() {
+        assertEquals(emptySet<Season>(), RecipeParser.parse(sample).seasons)
+    }
+
+    @Test
+    fun `categorie et saison se lisent ensemble dans n importe quel ordre`() {
+        for (md in listOf(
+            "# T\nCatégorie : plat\nSaison : hiver\n## Ingrédients\n- 1 oeuf",
+            "---\nsaison: hiver\ncategorie: plat\n---\n# T\n## Ingrédients\n- 1 oeuf",
+        )) {
+            val recipe = RecipeParser.parse(md)
+            assertEquals(md, RecipeCategory.MAIN, recipe.category)
+            assertEquals(md, setOf(Season.WINTER), recipe.seasons)
+            assertTrue(md, recipe.warnings.isEmpty())
+        }
     }
 }

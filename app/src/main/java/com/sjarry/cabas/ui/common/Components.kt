@@ -3,11 +3,20 @@ package com.sjarry.cabas.ui.common
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -71,3 +80,47 @@ fun Modifier.clickableListItem(onClick: () -> Unit): Modifier = this.clickable(o
 @OptIn(ExperimentalFoundationApi::class)
 fun Modifier.clickableListItem(onClick: () -> Unit, onLongClick: () -> Unit): Modifier =
     this.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+
+/**
+ * Puces de filtre à choix unique ; ré-appuyer sur la puce active l'éteint. Pas de puce
+ * « Toutes » : l'absence de sélection le dit déjà. L'appelant ne passe que les valeurs
+ * présentes dans sa liste — une puce qui ne rendrait rien est du bruit.
+ */
+@Composable
+fun <T> SingleChoiceChipRow(
+    items: List<T>,
+    selected: T?,
+    label: (T) -> String,
+    onSelect: (T?) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Marges intérieures de la rangée : nulles dans un dialogue, qui a déjà les siennes. */
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(contentPadding),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items.forEach { item ->
+            val isSelected = item == selected
+            FilterChip(
+                selected = isSelected,
+                onClick = { onSelect(if (isSelected) null else item) },
+                label = { Text(label(item)) },
+                leadingIcon = if (isSelected) {
+                    {
+                        Icon(
+                            Icons.Filled.Done,
+                            contentDescription = null,
+                            modifier = Modifier.size(FilterChipDefaults.IconSize),
+                        )
+                    }
+                } else {
+                    null
+                },
+            )
+        }
+    }
+}

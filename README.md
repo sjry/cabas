@@ -13,6 +13,8 @@ ensuite par le nombre de convives indiqué dans le menu.
 
 ```markdown
 # Poulet au curry
+Catégorie : plat
+Saison : automne, hiver
 
 ## Ingrédients
 - 150 g riz basmati
@@ -36,11 +38,21 @@ Quatre exemples complets se trouvent dans [`exemples/`](exemples/).
 | Partie | Écriture |
 |---|---|
 | **Titre** | la première ligne `#` du fichier. À défaut, le nom du fichier est utilisé |
+| **Catégorie** | *facultative* : une ligne `Catégorie : plat` entre le titre et la première section. Valeurs : `apéritif`, `entrée`, `plat`, `accompagnement`, `dessert`, `goûter`, `boisson`, `sauce` |
+| **Saison** | *facultative* : une ligne `Saison : automne, hiver` au même endroit, une ou plusieurs valeurs séparées par des virgules parmi `printemps`, `été`, `automne`, `hiver` ; `toutes` vaut les quatre |
 | **Ingrédients** | un titre `##` contenant `ingr` (`## Ingrédients`, `## Ingredients`), puis une puce `-`, `*` ou `+` par ingrédient |
 | **Étapes** | un titre `##` contenant `étape`, `préparation` ou `instruction`, puis une liste numérotée ou à puces |
 
 Les accents et la casse des titres de section n'ont pas d'importance. Toute autre section
 (`## Notes`, `## Astuces`…) est simplement ignorée.
+
+Catégorie et saison tolèrent la casse, les accents, le pluriel et quelques synonymes (`plat
+principal`, `apéro`, `petit-déjeuner` pour goûter, `toute l'année` pour toutes les saisons…).
+Un bloc de propriétés `---` en tête de fichier, comme en écrit Obsidian, est accepté :
+`categorie: dessert` et `saison: été` y sont lus de la même façon et les autres propriétés
+sont ignorées. Une valeur inconnue est signalée après l'import et la recette est importée
+sans elle (les saisons comprises sont gardées). Toute autre ligne placée avant la première
+section est ignorée.
 
 ### Ligne d'ingrédient
 
@@ -87,6 +99,16 @@ mais une cuillère ne sera jamais convertie en millilitres.
    Sous le champ de recherche, un compteur donne le **nombre total de recettes**
    importées (« 42 recettes ») et, pendant une recherche, le nombre de résultats
    (« 3 recettes sur 42 »).
+
+   Quand des recettes portent une catégorie ou une saison, une rangée de **puces** par
+   attribut (Entrée, Plat, Dessert… puis Printemps, Été…) apparaît entre la recherche et le
+   compteur ; seules les valeurs réellement utilisées sont proposées. Une puce filtre la
+   liste, un second appui la relâche ; une catégorie, une saison et la recherche se cumulent,
+   et le compteur « 3 recettes sur 42 » vaut pour l'ensemble. Une recette sans saison ne sort
+   sous aucune puce de saison. Catégorie et saisons figurent sous chaque titre, devant le nom
+   du fichier (« Plat · Automne, hiver · soupe.md »). Les recettes importées avant l'arrivée de
+   ces attributs n'en ont pas tant que leur fichier, une fois annoté, n'a pas été re-synchronisé
+   ou réimporté.
 2. **Menu** — ajouter des recettes et régler le nombre de personnes pour chacune.
    Une case à cocher par recette permet de suivre ce qui a déjà été cuisiné : la recette
    cochée est estompée mais reste dans le menu, et ses ingrédients restent dans la liste
@@ -103,22 +125,32 @@ mais une cuillère ne sera jamais convertie en millilitres.
      lettre *E*, et les titres qui ne commencent pas par une lettre finissent sous `#` ;
    - une **barre de sélection** en bas retient les recettes cochées sous forme de puces,
      visibles où qu'on soit dans la liste et retirables d'un appui sur leur croix ;
-   - les recettes déjà au menu n'y figurent pas.
+   - les recettes déjà au menu n'y figurent pas ;
+   - les mêmes **puces de catégorie et de saison** que dans l'onglet *Recettes*, sous la
+     recherche, se cumulent avec elle ; catégorie et saisons sont rappelées sous chaque titre,
+     comme sur les cartes du menu et dans le détail d'une recette.
 
    Pour les soirs sans idée, le bouton **dé** à côté d'*Ajouter* — ou le lien *Ou tirer au
-   sort* quand le menu est vide — **tire des recettes au hasard**. On choisit combien :
-   le compteur ne dépasse jamais le nombre de recettes hors menu, qu'il affiche, si bien
-   qu'un tirage rend toujours exactement ce qu'on a demandé. Un second compteur donne le
-   **nombre de personnes**, qui s'applique à *toutes* les recettes du tirage — on cuisine pour
-   la même table — et reste ajustable ensuite carte par carte. Une recette déjà au menu n'est
-   jamais retirée au sort. Quand tout est déjà au menu, le dé le dit et ne tire rien.
+   sort* quand le menu est vide — **tire des recettes au hasard**. Des puces permettent de
+   choisir une **catégorie** et une **saison** (seules celles présentes hors menu sont
+   proposées) ; sans choix, tout est tiré, toutes saisons confondues, recettes sans saison
+   comprises. Une saison choisie ne sort que les recettes qui la portent — celles marquées
+   `toutes` en font partie — et écarte celles qui n'en ont pas. On choisit ensuite combien :
+   le compteur ne dépasse jamais le nombre de recettes hors menu dans cette sélection, qu'il
+   affiche, si bien qu'un tirage rend toujours exactement ce qu'on a demandé ; une sélection
+   qui ne donne rien (un dessert d'hiver quand il n'y en a pas) le dit et désactive le tirage.
+   Un second compteur donne le **nombre de personnes**, qui s'applique à *toutes* les recettes
+   du tirage — on cuisine pour la même table — et reste ajustable ensuite carte par carte. Une
+   recette déjà au menu n'est jamais retirée au sort. Quand tout est déjà au menu, le dé le dit
+   et ne tire rien.
 
    Chaque carte porte aussi son **propre dé**, qui remplace cette recette-là par une autre,
    tirée au sort, **sans confirmation** : le créneau garde son nombre de convives et sa place
    dans la liste, seule la recette change — et la case *faite* repart à zéro, elle parlait de
-   l'autre plat. De quoi relancer une carte qui ne plaît pas, autant de fois qu'il faut. Le dé
-   d'une carte est grisé quand toutes les recettes importées sont déjà au menu : il n'y a plus
-   rien à mettre à la place.
+   l'autre plat. La remplaçante est de la **même catégorie** et partage **au moins une saison**
+   avec la recette remplacée (une recette sans catégorie ou sans saison n'impose rien sur ce
+   point). De quoi relancer une carte qui ne plaît pas, autant de fois qu'il faut. Le dé d'une
+   carte est grisé quand plus rien hors menu ne répond à ces conditions.
 3. **Courses** — la liste se calcule automatiquement, en trois présentations :
    *Rayon* (par défaut), *A→Z* avec les ingrédients fusionnés, ou *Recette*. Les cases
    cochées sont conservées, y compris après un changement du nombre de convives.
@@ -263,8 +295,8 @@ $ANDROID_HOME/emulator/emulator -avd <nom-de-l-avd> &
 ## Architecture
 
 ```
-parser/     RecipeParser, IngredientUnit, IngredientCategory, QuantityFormatter
-            — Kotlin pur, testé
+parser/     RecipeParser, RecipeCategory, Season, IngredientUnit, IngredientCategory,
+            QuantityFormatter — Kotlin pur, testé
 data/       Room (recettes, menu, articles cochés, rayons corrigés),
             ShoppingListBuilder, imports
 ui/         Compose Material 3 : recettes, détail, menu, liste de courses
